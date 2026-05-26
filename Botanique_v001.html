@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Botanique · Flashcards</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Lora:ital,wght@0,400;0,600;1,400;1,600&family=DM+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; }
+  :root { --bg:#0a110d; --surface:#111a13; --surface2:#172019; --border:rgba(255,255,255,0.06); --text:#e4ede6; --muted:#5a7860; --muted2:#334d38; --accent:#7ed47e; }
+  html { height:-webkit-fill-available; overflow:hidden; }
+  body { min-height:100vh; min-height:-webkit-fill-available; display:flex; align-items:center; justify-content:center; font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text); overflow:hidden; position:fixed; width:100%; height:100%; }
+  .bg-blob { position:fixed; border-radius:50%; filter:blur(90px); pointer-events:none; z-index:0; opacity:0.07; }
+  .blob1 { width:400px; height:400px; background:#1a6b2e; top:-120px; left:-120px; }
+  .blob2 { width:300px; height:300px; background:#2d7a4a; bottom:-80px; right:-80px; }
+  .blob3 { width:220px; height:220px; background:#4a8c2a; top:40%; left:60%; }
+
+  .screen { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; z-index:1; transition:opacity 0.3s,transform 0.3s; }
+  .screen.hidden { opacity:0; pointer-events:none; transform:scale(0.97); }
+
+  /* CONFIG */
+  .config-wrap { max-width:460px; width:93%; display:flex; flex-direction:column; align-items:center; gap:0.5rem; }
+  .config-title { font-family:'Playfair Display',serif; font-size:1.6rem; font-weight:400; color:var(--text); margin-bottom:0.1rem; }
+  .config-subtitle { font-size:0.8rem; color:var(--muted); margin-bottom:0.3rem; }
+  .config-section-label { font-size:0.7rem; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted2); align-self:flex-start; margin-bottom:-0.1rem; }
+
+  .theme-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:0.35rem; width:100%; }
+  .theme-btn { padding:13px 8px; border:none; border-radius:14px; font-size:0.8rem; font-weight:700; cursor:pointer; touch-action:manipulation; background:rgba(255,255,255,0.05); color:var(--muted2); transition:background 0.15s,color 0.15s; line-height:1.3; }
+  .theme-btn.active[data-theme="fruits-legumes"]     { background:linear-gradient(135deg,#1a6b2e,#27ae60); color:#fff; }
+  .theme-btn.active[data-theme="botanique-generale"] { background:linear-gradient(135deg,#4a3000,#8d5524); color:#fff; }
+  .theme-btn.active[data-theme="classification"]     { background:linear-gradient(135deg,#1a4a2e,#3a9a55); color:#fff; }
+  .theme-btn.active[data-theme="angiospermes"]       { background:linear-gradient(135deg,#4a3a0a,#e6c200); color:#fff; }
+
+  .subgroup-container { width:100%; display:flex; flex-direction:column; gap:0.25rem; margin-top:-0.15rem; padding:0.45rem 0.5rem 0.5rem; border-left:2px solid rgba(58,154,85,0.5); background:rgba(58,154,85,0.05); border-radius:0 10px 10px 0; }
+  .subgroup-container.hidden { display:none; }
+  .subgroup-label { font-size:0.62rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted2); }
+  .subgroup-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:0.3rem; width:100%; }
+  .subgroup-btn { padding:9px 6px; border:none; border-radius:10px; font-size:0.7rem; font-weight:700; cursor:pointer; touch-action:manipulation; background:rgba(255,255,255,0.05); color:var(--muted2); transition:background 0.15s,color 0.15s; line-height:1.25; }
+  .subgroup-btn.active[data-subgroup="non-vasc"]         { background:linear-gradient(135deg,#1a4a4a,#3aa9a9); color:#fff; }
+  .subgroup-btn.active[data-subgroup="vasc-sans-fleurs"] { background:linear-gradient(135deg,#1a3a1a,#2d5a2d); color:#fff; }
+
+  .select-all-row { display:flex; gap:0.35rem; width:100%; }
+  .btn-select-all,.btn-select-none { flex:1; padding:10px; border:none; border-radius:12px; font-size:0.74rem; font-weight:700; cursor:pointer; touch-action:manipulation; background:rgba(255,255,255,0.06); color:var(--muted); }
+
+  .card-count { font-size:0.72rem; color:var(--muted2); margin-top:0.1rem; }
+  .btn-start { width:100%; padding:16px; border:none; border-radius:16px; font-size:1.05rem; font-weight:700; cursor:pointer; touch-action:manipulation; font-family:'DM Sans',sans-serif; background:linear-gradient(135deg,#1a6b2e,#27ae60); color:#fff; letter-spacing:0.03em; box-shadow:0 4px 20px rgba(26,107,46,0.35); margin-top:0.1rem; }
+  .btn-start:active { transform:scale(0.98); opacity:0.9; }
+  .btn-start:disabled { opacity:0.35; cursor:default; }
+
+  /* GAME */
+  .game-wrap { max-width:460px; width:93%; display:flex; flex-direction:column; align-items:center; }
+  .game-topbar { display:flex; align-items:center; justify-content:space-between; width:100%; margin-bottom:0.25rem; }
+  .game-title { font-family:'Playfair Display',serif; font-size:1rem; font-weight:400; color:var(--muted); }
+  .btn-settings { background:none; border:none; cursor:pointer; font-size:1.2rem; color:var(--muted2); padding:4px 6px; border-radius:8px; touch-action:manipulation; }
+
+  .card-wrapper { width:100%; min-height:295px; border-radius:22px; background:linear-gradient(145deg,var(--surface),var(--surface2)); box-shadow:0 12px 48px rgba(0,0,0,0.7),0 0 0 1.5px var(--border); margin-bottom:0.28rem; display:flex; flex-direction:column; align-items:center; justify-content:center; position:relative; overflow:hidden; padding:1.4rem 1.5rem 1.3rem; }
+  .card-accent-bar { position:absolute; top:0; left:0; right:0; height:3px; border-radius:22px 22px 0 0; transition:background 0.4s; }
+  .q-text { font-family:'Playfair Display',serif; font-size:1.35rem; font-weight:700; line-height:1.45; color:var(--text); text-align:center; }
+  .q-text.sans { font-family:'DM Sans',sans-serif; }
+  .answer-area { display:none; flex-direction:column; align-items:center; gap:0.3rem; width:100%; margin-top:0.35rem; }
+  .answer-area.visible { display:flex; }
+  .answer-sep { width:40px; height:2px; background:linear-gradient(90deg,transparent,var(--muted2),transparent); border-radius:2px; }
+  .answer-text { font-family:'Lora',serif; font-size:1.15rem; font-weight:600; color:var(--accent); text-align:center; line-height:1.55; text-shadow:0 2px 16px rgba(126,212,126,0.25); font-style:italic; letter-spacing:0.01em; }
+  .answer-text.multiline { text-align:left; font-size:1rem; }
+  .answer-text.sans { font-family:'DM Sans',sans-serif; font-style:normal; letter-spacing:0; }
+  .answer-family { font-size:0.9rem; font-weight:600; color:#a8c8a8; text-align:center; margin-top:-0.1rem; }
+  .answer-detail { font-size:0.88rem; color:#8a9baf; font-style:italic; text-align:center; line-height:1.55; max-width:93%; }
+  .progress-bar-bg { position:absolute; bottom:0; left:0; right:0; height:3px; background:rgba(255,255,255,0.04); }
+  .progress-bar-fill { height:100%; background:linear-gradient(90deg,#1a6b2e,var(--accent)); transition:width 0.4s ease; border-radius:0 2px 2px 0; }
+
+  .buttons-zone { height:4rem; display:flex; align-items:center; justify-content:center; margin-bottom:0.1rem; position:relative; }
+  .btns { display:flex; gap:0.4rem; justify-content:center; position:absolute; }
+  .btns.hidden { visibility:hidden; pointer-events:none; }
+  .gbtn { padding:13px 18px; border:none; border-radius:16px; font-size:0.9rem; font-weight:700; cursor:pointer; touch-action:manipulation; font-family:'DM Sans',sans-serif; }
+  .gbtn:active:not(:disabled) { transform:scale(0.95); opacity:0.85; }
+  .btn-reveal   { background:linear-gradient(135deg,#1a2e20,#2d4a35); color:#adc; min-width:190px; border:1px solid rgba(255,255,255,0.08); }
+  .btn-known    { background:linear-gradient(135deg,#43e97b,#38f9d7); color:#0a1a12; flex:1; }
+  .btn-review3  { background:linear-gradient(135deg,#fa709a,#fee140); color:#1a1a2e; flex:1; min-width:64px; }
+  .btn-review5  { background:linear-gradient(135deg,#f7971e,#ffd200); color:#1a1a2e; flex:1; min-width:64px; }
+  .btn-review20 { background:linear-gradient(135deg,#eb3349,#f45c43); color:white; flex:1; min-width:64px; }
+  .action-row { display:flex; gap:0.4rem; width:100%; }
+  .stats { font-size:0.68rem; color:var(--muted2); line-height:1.9; }
+  .stats strong { color:var(--muted); }
+
+  .done-screen { display:none; text-align:center; padding:1rem; }
+  .done-screen h2 { font-family:'Playfair Display',serif; font-size:2rem; margin-bottom:0.8rem; font-weight:400; }
+  .done-screen p { color:#6a8090; margin-bottom:1.4rem; line-height:1.6; font-size:1rem; }
+  .done-icon { font-size:2.6rem; margin-bottom:0.4rem; }
+  .done-btns { display:flex; gap:0.5rem; justify-content:center; }
+
+  @media (max-width:400px) {
+    .theme-btn { font-size:0.72rem; padding:11px 5px; }
+    .q-text { font-size:1.2rem; }
+    .gbtn { padding:12px 10px; font-size:0.84rem; }
+  }
+</style>
+</head>
+<body>
+<div class="bg-blob blob1"></div>
+<div class="bg-blob blob2"></div>
+<div class="bg-blob blob3"></div>
+
+<!-- CONFIG SCREEN -->
+<div class="screen" id="screenConfig">
+  <div class="config-wrap">
+    <div class="config-title">🌿 Botanique</div>
+
+    <div class="config-section-label">Thèmes</div>
+    <div class="theme-grid">
+      <button class="theme-btn" data-theme="fruits-legumes"      onclick="toggleTheme('fruits-legumes')">🍎 Fruits, légumes,<br>céréales & épices</button>
+      <button class="theme-btn"        data-theme="botanique-generale"  onclick="toggleTheme('botanique-generale')">🌿 Botanique<br>générale</button>
+      <button class="theme-btn"        data-theme="classification"      onclick="toggleTheme('classification')">🌲 Classification<br>plantes non à fleurs</button>
+      <button class="theme-btn"        data-theme="angiospermes"        onclick="toggleTheme('angiospermes')">🌸 Classification<br>plantes à fleurs</button>
+    </div>
+
+    <div id="subgroupContainer" class="subgroup-container hidden">
+      <div class="subgroup-label">Sous-groupes (plantes non à fleurs)</div>
+      <div class="subgroup-grid">
+        <button class="subgroup-btn" data-subgroup="non-vasc"         onclick="toggleSubgroup('non-vasc')">🌿 Non vasculaires<br>& hauts rangs</button>
+        <button class="subgroup-btn" data-subgroup="vasc-sans-fleurs" onclick="toggleSubgroup('vasc-sans-fleurs')">🌲 Vasculaires<br>sans fleurs</button>
+      </div>
+    </div>
+
+    <div class="select-all-row">
+      <button class="btn-select-all"  onclick="selectAll()">✓ Tout sélectionner</button>
+      <button class="btn-select-none" onclick="selectNone()">✕ Tout désélectionner</button>
+    </div>
+
+    <div class="card-count" id="cardCount"></div>
+    <button class="btn-start" id="btnStart" onclick="startGame()">Commencer →</button>
+  </div>
+</div>
+
+<!-- GAME SCREEN -->
+<div class="screen hidden" id="screenGame">
+  <div class="game-wrap">
+    <div class="game-topbar">
+      <div class="game-title" id="gameTitle">🌿 Botanique</div>
+      <button class="btn-settings" onclick="goConfig()">⚙</button>
+    </div>
+
+    <div class="card-wrapper" id="cardWrapper">
+      <div class="card-accent-bar" id="cardAccentBar"></div>
+      <div id="gameArea">
+        <div class="q-text" id="qText"></div>
+        <div class="answer-area" id="answerArea">
+          <div class="answer-sep"></div>
+          <div class="answer-text" id="answerText"></div>
+          <div class="answer-family" id="answerFamily"></div>
+          <div class="answer-detail" id="answerDetail"></div>
+        </div>
+      </div>
+      <div class="done-screen" id="doneScreen">
+        <div class="done-icon">🌿</div>
+        <h2>Bravo !</h2>
+        <p>Toutes les cartes passées.<br>Continue à réviser pour mémoriser durablement.</p>
+        <div class="done-btns">
+          <button class="gbtn btn-known" id="restartBtn" onclick="doRestart()">Recommencer</button>
+        </div>
+      </div>
+      <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressFill"></div></div>
+    </div>
+
+    <div class="buttons-zone">
+      <div class="btns" id="revealButtons">
+        <button class="gbtn btn-reveal" id="revealBtn">Révéler la réponse</button>
+      </div>
+      <div class="btns hidden" id="actionButtons">
+        <div class="action-row">
+          <button class="gbtn btn-known"    id="knownBtn">✓ Connu</button>
+          <button class="gbtn btn-review3"  id="reviewBtn3">+3</button>
+          <button class="gbtn btn-review5"  id="reviewBtn5">+5</button>
+          <button class="gbtn btn-review20" id="reviewBtn20">+20</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="stats" id="stats"></div>
+  </div>
+</div>
+
+<script>
+// ─── THEME COLORS ────────────────────────────────────────────────────────────
+var THEME_COLORS = {
+  'fruits-legumes':      ['#1a6b2e','#27ae60'],
+  'botanique-generale':  ['#4a3000','#8d5524'],
+  'classification':      ['#1a4a2e','#3a9a55'],
+  'angiospermes':        ['#4a3a0a','#e6c200']
+};
+
+// ─── CARDS ───────────────────────────────────────────────────────────────────
+// q = aliment / usage courant | a = nom latin | family = famille botanique | detail = anecdote
+var CARDS = [
+
+// ══════════════════════════════════════════════════════════════════
+// FRUITS
+// ══════════════════════════════════════════════════════════════════
+{theme:"fruits-legumes",q:"La pomme",a:"Malus domestica",family:"Famille : Rosaceae",detail:"Originaire d'Asie centrale (Kazakhstan), la pomme compte plus de 7 500 cultivars. La Gala, la Golden Delicious et la Granny Smith dominent les marchés européens. Le pommier peut vivre plus de 100 ans et commence à fructifier dès 3–5 ans."},
+{theme:"fruits-legumes",q:"La poire",a:"Pyrus communis",family:"Famille : Rosaceae",detail:"Cultivée depuis l'Antiquité en Asie et en Europe. Le poirier peut vivre plus de 300 ans. La France est réputée pour ses variétés AOP comme la poire Williams ou la Conférence. Riche en fibres solubles (pectine) et en vitamine C."},
+{theme:"fruits-legumes",q:"La fraise",a:"Fragaria × ananassa",family:"Famille : Rosaceae",detail:"La fraise cultivée est un hybride obtenu au XVIIIe siècle en Bretagne, issu du croisement de Fragaria virginiana (Amérique du Nord) et de Fragaria chiloensis (Chili). Le « fruit » rouge est botaniquement un faux-fruit : les akènes (petits points) sont les vrais fruits."},
+{theme:"fruits-legumes",q:"La cerise",a:"Prunus avium",family:"Famille : Rosaceae",detail:"Le merisier (cerisier sauvage) est originaire d'Europe et d'Asie occidentale. La griotte (Prunus cerasus) en est une espèce sœur plus acide. Les fleurs de cerisier (sakura) sont le symbole national du Japon. Le bois de merisier est très apprécié en ébénisterie."},
+{theme:"fruits-legumes",q:"La pêche",a:"Prunus persica",family:"Famille : Rosaceae",detail:"Malgré son épithète persica, la pêche est originaire de Chine (cultivée dès le Xe siècle av. J.-C.). Elle a transité par la Perse avant d'arriver en Europe avec les Romains. La nectarine est une variété à peau lisse due à un gène récessif."},
+{theme:"fruits-legumes",q:"La prune / le quetsche",a:"Prunus domestica",family:"Famille : Rosaceae",detail:"La prune cultivée est un hybride entre le prunellier (Prunus spinosa) et le myrobolan (Prunus cerasifera). Le pruneau d'Agen (AOP) est une prune d'Ente séchée. La reine-claude (variété verte sucrée) doit son nom à la reine Claude, épouse de François Ier."},
+{theme:"fruits-legumes",q:"L'abricot",a:"Prunus armeniaca",family:"Famille : Rosaceae",detail:"Originaire de Chine et d'Asie centrale, l'abricot est nommé armeniaca car les Romains l'ont découvert en Arménie. Riche en bêta-carotène (pigment orange). La Turquie et l'Uzbekistan sont les premiers producteurs mondiaux. L'amande de son noyau contient de l'amygdaline (précurseur de cyanure)."},
+{theme:"fruits-legumes",q:"Le raisin",a:"Vitis vinifera",family:"Famille : Vitaceae",detail:"La vigne est domestiquée depuis 6 000–8 000 ans dans le Caucase. Le phylloxéra (puceron américain) a détruit 40 % du vignoble européen au XIXe siècle ; le greffage sur porte-greffe américain a sauvé la culture. Le raisin contient du resvératrol, polyphénol étudié pour ses propriétés cardioprotectrices."},
+{theme:"fruits-legumes",q:"L'orange",a:"Citrus sinensis",family:"Famille : Rutaceae",detail:"Hybride naturel entre la mandarine et le pamplemoussier, domestiqué en Asie du Sud-Est. Introduite en Europe par les Portugais au XVe siècle. C'est aujourd'hui le fruit le plus produit au monde. Le Brésil fournit à lui seul ~30 % de la production mondiale."},
+{theme:"fruits-legumes",q:"Le citron",a:"Citrus limon",family:"Famille : Rutaceae",detail:"Hybride entre le cédratier et l'orange amère. Riche en vitamine C (acide ascorbique), utilisé par les marins pour prévenir le scorbut. Le jus de citron est un antioxydant naturel qui empêche l'oxydation des fruits coupés. La bergamote (Citrus bergamia) parfume le thé Earl Grey."},
+{theme:"fruits-legumes",q:"Le pamplemousse",a:"Citrus paradisi",family:"Famille : Rutaceae",detail:"Hybride naturel entre la pomelo (Citrus maxima) et l'orange douce, apparu spontanément à la Barbade au XVIIIe siècle. La naringine lui donne son amertume. Attention : il inhibe le cytochrome P450 3A4, une enzyme hépatique qui métabolise de nombreux médicaments — interactions potentiellement dangereuses."},
+{theme:"fruits-legumes",q:"La mandarine",a:"Citrus reticulata",family:"Famille : Rutaceae",detail:"Originaire de Chine du Sud et d'Indochine. La clémentine (sans pépins) est un hybride mandarine × orange douce obtenu au début du XXe siècle en Algérie par le Père Clément. La mandarine est la clémentine du nom botanique."},
+{theme:"fruits-legumes",q:"La banane",a:"Musa × paradisiaca",family:"Famille : Musaceae",detail:"La banane cultivée (Cavendish) est quasi stérile et sans graines — elle se reproduit par rejets végétatifs. Le bananier est une herbe géante, non un arbre. La variété Gros Michel, dominante avant 1950, a été anéantie par le champignon Fusarium oxysporum cubense. La Cavendish est aujourd'hui menacée par la même maladie."},
+{theme:"fruits-legumes",q:"L'ananas",a:"Ananas comosus",family:"Famille : Bromeliaceae",detail:"Originaire du bassin du Paraná (Amérique du Sud). Le fruit est un fruit multiple (syncarpium). La bromélaïne, enzyme protéolytique qu'il contient, empêche la formation de gélatine avec de l'ananas frais. Le Costa Rica et les Philippines sont les premiers producteurs mondiaux."},
+{theme:"fruits-legumes",q:"La mangue",a:"Mangifera indica",family:"Famille : Anacardiaceae",detail:"Cultivée depuis plus de 4 000 ans en Inde. L'Inde et la Chine représentent 60 % de la production mondiale. Le manguier peut vivre 300 ans et fructifier toute sa vie. La résine et la sève peuvent provoquer des dermatites de contact (même famille que l'anacardier et le sumac vénéneux)."},
+{theme:"fruits-legumes",q:"L'avocat",a:"Persea americana",family:"Famille : Lauraceae",detail:"Originaire du Mexique et d'Amérique centrale, l'avocat est une drupe riche en acides gras mono-insaturés. Ses graines ne se dispersaient autrefois que grâce aux grands mammifères aujourd'hui éteints (mammouths, paresseux géants) — un anachronisme évolutif. Le Mexique est de loin le premier exportateur mondial."},
+{theme:"fruits-legumes",q:"La figue",a:"Ficus carica",family:"Famille : Moraceae",detail:"L'un des premiers fruits cultivés (~9 000 ans, vallée du Jourdain). La figue est un sycone — une inflorescence inversée dans laquelle se trouvent les vraies fleurs. La pollinisation est assurée exclusivement par la guêpe Blastophaga psenes, dans une coévolution obligatoire."},
+{theme:"fruits-legumes",q:"La grenade",a:"Punica granatum",family:"Famille : Lythraceae",detail:"Originaire de Perse et du Caucase. Le nom Punica évoque Carthage (Puniques). Le fruit est une baie à épicarpe coriace renfermant des centaines d'arilles. Riche en punicalagines (polyphénols), elle est étudiée pour ses propriétés antioxydantes. Symbole de fertilité dans de nombreuses cultures méditerranéennes."},
+{theme:"fruits-legumes",q:"Le kiwi",a:"Actinidia deliciosa",family:"Famille : Actinidiaceae",detail:"Originaire de Chine (« groseille chinoise »), introduit en Nouvelle-Zélande au début du XXe siècle. Rebaptisé « kiwifruit » dans les années 1960 pour l'export. Contient environ 2 fois plus de vitamine C qu'une orange. La Nouvelle-Zélande et l'Italie sont les principaux exportateurs mondiaux."},
+{theme:"fruits-legumes",q:"La papaye",a:"Carica papaya",family:"Famille : Caricaceae",detail:"Originaire d'Amérique centrale et du Mexique. Le latex du fruit vert contient la papaïne, enzyme protéolytique utilisée comme attendrisseur de viande et dans les préparations pharmaceutiques. L'arbre commence à fructifier dès 6–9 mois. L'Inde est le premier producteur mondial."},
+{theme:"fruits-legumes",q:"La goyave",a:"Psidium guajava",family:"Famille : Myrtaceae",detail:"Originaire d'Amérique centrale et des Caraïbes, la goyave est l'un des fruits les plus riches en vitamine C (4 fois plus que l'orange). L'Inde en est le premier producteur. La guava paste (goiabada) est une confiture épaisse très populaire au Brésil. Les feuilles sont utilisées en médecine traditionnelle contre la diarrhée."},
+{theme:"fruits-legumes",q:"Le durian",a:"Durio zibethinus",family:"Famille : Malvaceae",detail:"Surnommé « roi des fruits » en Asie du Sud-Est, le durian est tristement célèbre pour son odeur extrêmement puissante (composés soufrés). Il est interdit dans de nombreux hôtels, transports et lieux publics en Asie. Sa chair crémeuse est très nutritive (glucides, lipides, vitamines B). La Thaïlande et la Malaisie en sont les principaux producteurs."},
+{theme:"fruits-legumes",q:"Le litchi",a:"Litchi chinensis",family:"Famille : Sapindaceae",detail:"Cultivé en Chine depuis 2 000 ans. Drupe à arille translucide et parfumée. La consommation excessive de litchis verts à jeun a été identifiée comme cause d'encéphalopathie hypoglycémique chez des enfants en Inde et Bangladesh, liée à la méthylènecyclopropylglycine (MCPG) inhibant la néoglucogenèse."},
+{theme:"fruits-legumes",q:"La noix de coco",a:"Cocos nucifera",family:"Famille : Arecaceae",detail:"Le cocotier est surnommé « arbre de vie » dans les régions tropicales car toutes ses parties sont utilisables. Le fruit (drupe) contient une eau riche en électrolytes et une chair riche en acide laurique (acide gras saturé à chaîne moyenne). La Philippins et l'Indonésie dominent la production mondiale. Le cocotier peut atteindre 30 m."},
+{theme:"fruits-legumes",q:"La pastèque",a:"Citrullus lanatus",family:"Famille : Cucurbitaceae",detail:"Originaire d'Afrique du Sud-Est (Kalahari), cultivée depuis 5 000 ans en Égypte. Composée à 92 % d'eau. Le lycopène lui donne sa couleur rouge (puissant antioxydant). La pastèque jaune (sans lycopène) est une variété ancestrale. La Chine produit 70 % de la production mondiale."},
+{theme:"fruits-legumes",q:"Le melon",a:"Cucumis melo",family:"Famille : Cucurbitaceae",detail:"Originaire d'Asie du Sud (Inde) ou d'Afrique. Il existe deux sous-espèces principales : C. melo var. cantalupensis (melon brodé, France) et C. melo var. inodorus (melon Honeydew, conservation longue). Le melon de Cavaillon (Vaucluse) est réputé depuis le XVe siècle. La pulpe orange est riche en bêta-carotène."},
+{theme:"fruits-legumes",q:"La framboise",a:"Rubus idaeus",family:"Famille : Rosaceae",detail:"Framboisier originaire d'Europe et d'Asie du Nord. Le fruit est une drupe agrégée (drupes accolées sur un réceptacle). La framboise se détache du réceptacle à maturité, contrairement à la mûre qui reste attachée. Riche en anthocyanes et en acide ellagique (polyphénols). La Russie est le premier producteur mondial."},
+{theme:"fruits-legumes",q:"Le cassis",a:"Ribes nigrum",family:"Famille : Grossulariaceae",detail:"Arbuste originaire d'Europe centrale et du Nord. Le cassis est exceptionnellement riche en vitamine C (4× l'orange) et en anthocyanes (pigments bleu-noir). La liqueur de cassis (crème de cassis) entre dans la composition du Kir (cassis + vin blanc aligoté) inventé par le chanoine Kir, maire de Dijon. La Bourgogne est le principal terroir français."},
+{theme:"fruits-legumes",q:"La myrtille",a:"Vaccinium myrtillus",family:"Famille : Ericaceae",detail:"Arbuste des sous-bois acides et montagnards d'Europe. À distinguer du bleuet cultivé (Vaccinium corymbosum) originaire d'Amérique du Nord. Les anthocyanes de la myrtille teignent les doigts et les dents en bleu-violet. Pendant la Seconde Guerre mondiale, les pilotes de la RAF auraient consommé de la confiture de myrtille pour améliorer leur vision nocturne."},
+{theme:"fruits-legumes",q:"La noix",a:"Juglans regia",family:"Famille : Juglandaceae",detail:"Le noyer royal est originaire d'Asie centrale et du Proche-Orient. Son fruit est une drupe dont la partie comestible est le tégument de la graine. La noix de Grenoble et la noix du Périgord bénéficient d'une AOP. Riche en acides gras oméga-3 (acide alpha-linolénique). Le brou de noix (enveloppe verte) est un pigment brun intense."},
+{theme:"fruits-legumes",q:"La noisette",a:"Corylus avellana",family:"Famille : Betulaceae",detail:"Le noisetier commun est un arbuste des lisières forestières européennes. La noisette est un akène entouré d'une cupule (enveloppe foliacée). La Turquie produit 70 % de la production mondiale, notamment pour l'industrie chocolatière. La noisette du Piémont (Nocciola Piemonte IGP) est la plus prisée des chocolatiers."},
+{theme:"fruits-legumes",q:"La châtaigne",a:"Castanea sativa",family:"Famille : Fagaceae",detail:"Le châtaignier est originaire du bassin méditerranéen et du Caucase. La châtaigne est un akène enfermé dans une bogue épineuse. Riche en amidon (40 %), elle servait d'aliment de base (« pain du pauvre ») dans les régions montagneuses avant la pomme de terre. La châtaigne de l'Ardèche bénéficie d'une AOP."},
+{theme:"fruits-legumes",q:"La datte",a:"Phoenix dactylifera",family:"Famille : Arecaceae",detail:"Le dattier est cultivé depuis 5 000 ans dans les oasis du Moyen-Orient et d'Afrique du Nord. La datte fraîche (Medjool, Deglet Nour) est très riche en sucres (70 % à sec). L'Égypte, l'Iran et l'Arabie Saoudite dominent la production. Le palmier dattier est dioïque (pieds mâles et femelles séparés), pollinisé à la main dans les plantations."},
+{theme:"fruits-legumes",q:"L'olive",a:"Olea europaea",family:"Famille : Oleaceae",detail:"L'olivier est l'arbre emblématique de la Méditerranée, cultivé depuis 6 000 ans. L'olive est une drupe dont la pulpe est très riche en acide oléique (oméga-9). L'huile d'olive extra vierge est obtenue par simple pression à froid. Certains oliviers millénaires (Crète, Sardaigne) sont encore productifs. L'Espagne est le premier producteur mondial d'huile d'olive."},
+{theme:"fruits-legumes",q:"Le tamarin",a:"Tamarindus indica",family:"Famille : Fabaceae (Caesalpinioideae)",detail:"Originaire d'Afrique tropicale (malgré l'épithète indica). Les gousses renferment une pulpe acide très utilisée en cuisine indienne, thaïlandaise et mexicaine. Il entre dans la composition originelle de la sauce Worcestershire. Le tamarin est aussi utilisé en médecine ayurvédique comme laxatif doux."},
+
+// ══════════════════════════════════════════════════════════════════
+// LÉGUMES
+// ══════════════════════════════════════════════════════════════════
+{theme:"fruits-legumes",q:"La tomate",a:"Solanum lycopersicum",family:"Famille : Solanaceae",detail:"Botaniquement un fruit (baie), la tomate est traitée comme légume en cuisine. Originaire des Andes (Pérou, Équateur), consommée par les Aztèques. Longtemps considérée ornementale et toxique en Europe. L'Italie l'adopte massivement au XIXe siècle. La Chine est aujourd'hui le premier producteur mondial."},
+{theme:"fruits-legumes",q:"La pomme de terre",a:"Solanum tuberosum",family:"Famille : Solanaceae",detail:"Originaire des hauts plateaux andins (Pérou-Bolivie), cultivée depuis 7 000 ans. La Grande Famine irlandaise (1845–1849) est causée par le mildiou Phytophthora infestans. Plus de 5 000 variétés existent dans les Andes. La pomme de terre germinée ou verte contient de la solanine, toxique pour l'homme."},
+{theme:"fruits-legumes",q:"La patate douce",a:"Ipomoea batatas",family:"Famille : Convolvulaceae",detail:"Originaire d'Amérique centrale et du Sud (Pérou, Colombie), cultivée depuis 8 000 ans. Contrairement à la pomme de terre (Solanaceae), la patate douce est une liseron. Riche en bêta-carotène (chair orange) et en vitamine C. La Chine produit 57 % de la production mondiale. Les variétés à chair violette (patate de Dojima) sont riches en anthocyanes."},
+{theme:"fruits-legumes",q:"La carotte",a:"Daucus carota subsp. sativus",family:"Famille : Apiaceae",detail:"Les premières carottes cultivées (Afghanistan, Xe siècle) étaient violettes ou jaunes. La carotte orange apparaît aux Pays-Bas au XVIIe siècle, sélectionnée en hommage à la Maison d'Orange. Le bêta-carotène (précurseur de la vitamine A) lui donne sa couleur. La carotte sauvage (Daucus carota) est l'ancêtre de toutes les variétés cultivées."},
+{theme:"fruits-legumes",q:"Le panais",a:"Pastinaca sativa",family:"Famille : Apiaceae",detail:"Légume racine blanc-crème, proche parent de la carotte, cultivé en Europe depuis l'Antiquité. Très populaire au Moyen Âge, il fut largement remplacé par la pomme de terre après son introduction en Europe. Riche en glucides, potassium et fibres. Connaît un regain d'intérêt en cuisine gastronomique pour son goût sucré et légèrement anisé."},
+{theme:"fruits-legumes",q:"Le navet",a:"Brassica rapa subsp. rapa",family:"Famille : Brassicaceae",detail:"Cultivé depuis l'Antiquité en Europe et en Asie. La même sous-espèce donne aussi le chou-rave et le chou chinois selon la sélection. La feuille de navet (navet japonais kabu) est également comestible. Au Moyen Âge, le navet était l'aliment de base des paysans avant d'être supplanté par la pomme de terre."},
+{theme:"fruits-legumes",q:"Le radis",a:"Raphanus sativus",family:"Famille : Brassicaceae",detail:"Originaire d'Asie orientale, cultivé depuis 3 000 ans en Égypte (les bâtisseurs des pyramides en étaient friands). Le radis noir (variété hivernale) est utilisé en phytothérapie pour stimuler la bile (cholérétique). Le radis est l'un des légumes à cycle le plus court (3–4 semaines du semis à la récolte)."},
+{theme:"fruits-legumes",q:"La betterave rouge",a:"Beta vulgaris subsp. vulgaris",family:"Famille : Amaranthaceae",detail:"La même espèce donne la betterave potagère (rouge), la betterave sucrière (blanche, source de 20 % du sucre mondial) et la bette à carde (feuilles). La bétanine (pigment rouge-violet) est un colorant alimentaire naturel (E162). La betterave est riche en nitrates alimentaires, qui améliorent les performances sportives d'endurance."},
+{theme:"fruits-legumes",q:"L'oignon",a:"Allium cepa",family:"Famille : Amaryllidaceae",detail:"Cultivé depuis au moins 5 000 ans en Asie centrale. Les oignons étaient vénérés en Égypte antique. La lacrimation est causée par le propanthial-S-oxyde qui réagit avec l'eau des larmes pour former de l'acide sulfurique dilué. L'oignon rouge doit sa couleur aux anthocyanes (quercétine). La Chine est le premier producteur mondial."},
+{theme:"fruits-legumes",q:"L'échalote",a:"Allium cepa var. aggregatum",family:"Famille : Amaryllidaceae",detail:"L'échalote est une variété d'oignon qui se multiplie par division de bulbes plutôt que par graine. Incontournable dans la cuisine française (sauce béarnaise, beurre blanc). L'échalote grise de tradition est plus fine aromatiquement que l'échalote rose. Son origine est le Moyen-Orient ; les Croisés l'auraient ramenée en Europe."},
+{theme:"fruits-legumes",q:"L'ail",a:"Allium sativum",family:"Famille : Amaryllidaceae",detail:"Cultivé depuis 7 000 ans au Proche-Orient. L'allicine se forme uniquement lors de l'écrasement (réaction enzymatique entre l'alliine et l'alliinase). L'ail noir (fermenté) a un goût de balsamique et une concentration en polyphénols augmentée. L'ail de Lautrec (rose, AOP) et l'ail blanc de Lomagne sont les variétés françaises les plus réputées."},
+{theme:"fruits-legumes",q:"Le poireau",a:"Allium ampeloprasum var. porrum",family:"Famille : Amaryllidaceae",detail:"Plante de la cuisine française par excellence (vichyssoise, flamiche). Il contient des fructo-oligosaccharides (FOS), fibres prébiotiques qui nourrissent le microbiote intestinal. Le poireau sauvage (Allium ampeloprasum) pousse encore dans le bassin méditerranéen. La partie blanche (fût) se forme en buttant la plante."},
+{theme:"fruits-legumes",q:"La ciboulette",a:"Allium schoenoprasum",family:"Famille : Amaryllidaceae",detail:"La plus fine des alliacées culinaires. C'est la seule espèce du genre Allium indigène à la fois en Europe, en Asie et en Amérique du Nord. Ses feuilles tubulaires sont ciselées fraîches sur les plats. Elle est l'une des « fines herbes » classiques de la cuisine française avec le persil, l'estragon et le cerfeuil."},
+{theme:"fruits-legumes",q:"La tomate cerise",a:"Solanum lycopersicum var. cerasiforme",family:"Famille : Solanaceae",detail:"La tomate cerise est une variété à petits fruits (Ø 1–3 cm) qui se rapproche le plus des formes ancestrales sauvages. Originaire d'Amérique du Sud, elle a longtemps été considérée comme une plante ornementale en Europe. Sa concentration en lycopène et en sucres est souvent plus élevée que dans les grosses tomates."},
+{theme:"fruits-legumes",q:"Le piment (fort)",a:"Capsicum frutescens",family:"Famille : Solanaceae",detail:"Cette espèce inclut le piment Tabasco et le piment de Cayenne. La capsaïcine se lie aux récepteurs TRPV1 (douleur/chaleur), créant une sensation de brûlure. Elle est mesurée en unités Scoville (SHU). Le piment oiseau (~100 000 SHU) et le Habanero (~300 000 SHU) relèvent de cette espèce ou de C. chinense."},
+{theme:"fruits-legumes",q:"Le poivron",a:"Capsicum annuum",family:"Famille : Solanaceae",detail:"La même espèce regroupe le poivron (0 SHU), le paprika, le piment jalapeño (~5 000 SHU) et le piment d'Espelette AOP (~2 000 SHU). L'absence de capsaïcine dans le poivron est due à une mutation récesssive. Il est riche en vitamine C (plus que l'orange à poids égal) et en caroténoïdes."},
+{theme:"fruits-legumes",q:"L'aubergine",a:"Solanum melongena",family:"Famille : Solanaceae",detail:"Originaire de l'Inde, cultivée depuis 1 500 ans. La solanine qu'elle contient est légèrement toxique à cru — la cuisson la détruit. Il en existe des centaines de variétés (blanche, rayée, longue, ronde). La moussaka (Grèce), la parmigiana (Italie) et le baba ghanoush (Levant) en sont les préparations emblématiques."},
+{theme:"fruits-legumes",q:"Le concombre",a:"Cucumis sativus",family:"Famille : Cucurbitaceae",detail:"Originaire de l'Inde du Nord, cultivé depuis 3 000 ans. Composé à 96 % d'eau. Les variétés modernes ont été débarrassées de la cucurbitacine (substance amère et toxique) par la sélection. Le cornichon est la même espèce, récolté immature et conservé en saumure ou en vinaigre."},
+{theme:"fruits-legumes",q:"La courgette",a:"Cucurbita pepo",family:"Famille : Cucurbitaceae",detail:"La courgette est le fruit immature de la courge commune. Même espèce que la citrouille et la potiron. Originaire d'Amérique centrale (domestication il y a 8 000 ans). La fleur de courgette est comestible (beignets). Cultivée en grande quantité, une courgette peut atteindre la taille d'une courge si on ne la récolte pas à temps."},
+{theme:"fruits-legumes",q:"Le potiron",a:"Cucurbita maxima",family:"Famille : Cucurbitaceae",detail:"Originaire d'Amérique du Sud (Argentine, Bolivie). À distinguer de la citrouille (Cucurbita pepo) et du butternut (Cucurbita moschata). Le potiron Jack-o'-lantern est en réalité une citrouille. La chair orange est riche en bêta-carotène. La courge spaghetti, le potimarron et la courge Hokkaido appartiennent à C. maxima."},
+{theme:"fruits-legumes",q:"La butternut (courge musquée)",a:"Cucurbita moschata",family:"Famille : Cucurbitaceae",detail:"Originaire d'Amérique centrale et du Sud. Sa chair orange-jaune est plus douce et moins fibreuse que le potiron. Le butternut est très riche en bêta-carotène et en vitamine C. Il se conserve plusieurs mois dans un endroit frais et sec. En cuisine, il s'accommode en velouté, rôti, en purée ou en risotto."},
+{theme:"fruits-legumes",q:"L'artichaut",a:"Cynara scolymus",family:"Famille : Asteraceae",detail:"L'artichaut est un chardon domestiqué, originaire de Méditerranée. La partie comestible est le capitule floral immature (réceptacle et bractées). La cynarine qu'il contient modifie temporairement la perception sucrée — le vin paraît sucré après l'avoir consommé, ce qui le rend difficile à accorder à table."},
+{theme:"fruits-legumes",q:"Le brocoli",a:"Brassica oleracea var. italica",family:"Famille : Brassicaceae",detail:"Brocoli, chou-fleur, chou de Bruxelles, chou kale, chou-rave : tous sont la même espèce (Brassica oleracea), exemple remarquable de sélection artificielle. Le brocoli est riche en sulforaphane (étudié pour ses propriétés anticancéreuses) et en vitamines C et K. Originaire d'Italie du Sud (Calabre)."},
+{theme:"fruits-legumes",q:"Le chou-fleur",a:"Brassica oleracea var. botrytis",family:"Famille : Brassicaceae",detail:"Le chou-fleur blanc est une masse de fleurs avortées (inflorescence hypertrophiée) protégée par des feuilles. Des variétés colorées existent : chou-fleur violet (anthocyanes), orange (bêta-carotène), vert (romanesco, forme fractale naturelle de type spirale de Fibonacci). Originaire du Levant."},
+{theme:"fruits-legumes",q:"Le chou de Bruxelles",a:"Brassica oleracea var. gemmifera",family:"Famille : Brassicaceae",detail:"Sélectionné en Belgique au XIIIe siècle. Les petites pommes sont des bourgeons axillaires développés sur une longue tige. Riche en vitamine C, K et en glucosinolates. L'amertume perçue par certaines personnes est liée à des variantes du gène TAS2R38 (récepteur du goût amer). Les variétés modernes ont été sélectionnées pour être moins amères."},
+{theme:"fruits-legumes",q:"Le chou frisé (kale)",a:"Brassica oleracea var. sabellica",family:"Famille : Brassicaceae",detail:"L'une des formes les plus ancestrales de chou, proche du chou sauvage méditerranéen. N'a pas de pomme (tête). Extrêmement riche en vitamines K, C, A et en calcium. Devenu un « superfood » médiatisé dans les années 2010. Résistant au gel — le kale est plus sucré après une gelée (conversion de l'amidon en sucres)."},
+{theme:"fruits-legumes",q:"L'épinard",a:"Spinacia oleracea",family:"Famille : Amaranthaceae",detail:"Originaire d'Asie centrale (Iran, Afghanistan), cultivé en Europe depuis le XVe siècle. La teneur en fer est réelle mais surestimée (une erreur de virgule au XIXe siècle a décuplé la valeur dans un tableau nutritif). Les oxalates réduisent l'absorption du calcium et du fer. La cuisson réduit le volume à 10 % du volume frais."},
+{theme:"fruits-legumes",q:"La blette (bette à carde)",a:"Beta vulgaris subsp. vulgaris var. cicla",family:"Famille : Amaranthaceae",detail:"La bette à carde est la même espèce que la betterave (Beta vulgaris), mais sélectionnée pour ses feuilles et ses côtes charnues plutôt que sa racine. Les côtes (cardes) peuvent être blanches, rouges ou jaunes. Riche en vitamines A, C et K. Très populaire dans la cuisine méditerranéenne, suisse (Erbazzone) et maghrébine."},
+{theme:"fruits-legumes",q:"Le céleri-rave",a:"Apium graveolens var. rapaceum",family:"Famille : Apiaceae",detail:"Le céleri-rave est une variété à hypocotyle (tige souterraine) renflé, alors que le céleri branche (var. dulce) est sélectionné pour ses pétioles. Originaire du bassin méditerranéen. L'apiol et le phtalide qu'il contient lui donnent son arôme caractéristique. Le céleri remonte (var. secalinum) est une variété aromatique à feuilles fines."},
+{theme:"fruits-legumes",q:"Le fenouil",a:"Foeniculum vulgare",family:"Famille : Apiaceae",detail:"Le bulbe de fenouil est en réalité une tige renflée (base des pétioles). L'anéthol, son arôme principal, est aussi présent dans l'anis étoilé et le pastis. Les Grecs nommaient leur victoire sur les Perses la « bataille de Marathon » — marathon signifiant « fenouil » en grec, car la plaine en était couverte."},
+{theme:"fruits-legumes",q:"Le poivron doux (paprika)",a:"Capsicum annuum",family:"Famille : Solanaceae",detail:"Le paprika est une poudre obtenue en séchant et broyant des variétés douces de C. annuum. La Hongrie (paprika de Kalocsa) et l'Espagne (pimentón de la Vera, fumé) en sont les pays de référence. La capsanthine et la capsorubine lui donnent sa couleur rouge intense. Riche en vitamine C (même séché)."},
+{theme:"fruits-legumes",q:"Le maïs doux",a:"Zea mays var. saccharata",family:"Famille : Poaceae (Graminées)",detail:"Le maïs doux est une variété de maïs dont une mutation empêche la conversion des sucres en amidon, le rendant sucré et tendre. Il doit être consommé rapidement après récolte car les sucres se convertissent rapidement en amidon. Originaire d'Amérique centrale, il est très populaire en Amérique du Nord (corn on the cob)."},
+{theme:"fruits-legumes",q:"Le haricot vert",a:"Phaseolus vulgaris",family:"Famille : Fabaceae",detail:"Originaire d'Amérique centrale et du Mexique, domestiqué il y a 7 000 ans. La même espèce donne le haricot vert (cosse fraîche), le haricot blanc (graine sèche : lingot, cannellini), le haricot rouge et le haricot noir. Riche en protéines végétales. Le haricot flageolet est une variété à graines récoltées semi-mûres."},
+{theme:"fruits-legumes",q:"Le petit pois",a:"Pisum sativum",family:"Famille : Fabaceae",detail:"L'ancêtre du pois cultivé vient du Proche-Orient et est l'une des premières plantes domestiquées (~8 000 av. J.-C.). C'est la plante avec laquelle Gregor Mendel a établi les lois de l'hérédité en 1865. Le pois mangetout (var. macrocarpon) se consomme avec la cosse. Les petits pois frais contiennent plus de sucre que les congelés conservés longtemps."},
+{theme:"fruits-legumes",q:"La fève",a:"Vicia faba",family:"Famille : Fabaceae",detail:"L'une des légumineuses les plus anciennement cultivées (7 000 ans av. J.-C., Proche-Orient). Les fèves vertes fraîches sont sucrées et tendres ; les fèves sèches plus intenses. Le ful medames (fèves mijotées) est le plat national égyptien. La favisme est une intolérance génétique (déficit en G6PD) qui rend la fève toxique pour certaines personnes (risque d'anémie hémolytique)."},
+{theme:"fruits-legumes",q:"La lentille",a:"Lens culinaris",family:"Famille : Fabaceae",detail:"L'une des premières plantes domestiquées (~8 000 av. J.-C., Proche-Orient). La forme lenticulaire de la graine a donné son nom à la lentille optique. Riche en protéines végétales, fer et folates. La lentille verte du Puy (AOP) et la lentille beluga (noire) sont parmi les plus prisées. L'Inde est le premier producteur mondial."},
+{theme:"fruits-legumes",q:"Le pois chiche",a:"Cicer arietinum",family:"Famille : Fabaceae",detail:"Domestiqué il y a ~10 000 ans au Levant. L'épithète arietinum (« bélier ») évoque la forme de la graine. Le houmous (pois chiches + tahini + citron + ail) est un aliment de base du Levant. La farine de pois chiche (chickpea flour, besan) est sans gluten. L'aquafaba (eau de cuisson) est utilisée comme substitut d'œuf en pâtisserie végane."},
+{theme:"fruits-legumes",q:"Le soja",a:"Glycine max",family:"Famille : Fabaceae",detail:"Domestiqué en Chine du Nord-Est il y a ~5 000 ans. La légumineuse la plus cultivée au monde. Elle fixe l'azote atmosphérique via Bradyrhizobium japonicum. Ses isoflavones (phytoestrogènes) font l'objet de nombreuses études. Elle entre dans la fabrication du tofu, tempeh, miso, sauce soja et dans ~60 % des produits alimentaires transformés."},
+{theme:"fruits-legumes",q:"Le topinambour",a:"Helianthus tuberosus",family:"Famille : Asteraceae",detail:"Tournesol tubéreux originaire d'Amérique du Nord, cultivé en France dès le XVIIe siècle. Son tubercule est riche en inuline (polysaccharide non digestible) qui fermente dans le côlon, produisant des gaz — d'où son surnom populaire. Connaît un regain d'intérêt en cuisine et dans l'alimentation des diabétiques (faible index glycémique)."},
+{theme:"fruits-legumes",q:"Le céleri branche",a:"Apium graveolens var. dulce",family:"Famille : Apiaceae",detail:"Sélectionné pour ses pétioles charnus et croquants (la branche). Originaire des zones marécageuses méditerranéennes. L'apiole et les phtalides lui confèrent son arôme caractéristique. Très faible en calories (6–10 kcal/100g). En Amérique du Nord, le céleri branche est le principal légume à base de jus (juice cleanse)."},
+{theme:"fruits-legumes",q:"Le persil",a:"Petroselinum crispum",family:"Famille : Apiaceae",detail:"Originaire du bassin méditerranéen oriental. Deux formes principales : le persil plat (plus aromatique) et le persil frisé (plus décoratif). Riche en vitamines K (une cuillère à soupe couvre les besoins journaliers), C et A. Éviter en grandes quantités pendant la grossesse (apiol utérotonique à forte dose). La racine de persil tubéreux est consommée comme légume en Europe centrale."},
+{theme:"fruits-legumes",q:"La coriandre",a:"Coriandrum sativum",family:"Famille : Apiaceae",detail:"Herbe aromatique utilisée depuis 7 000 ans (graines retrouvées dans des tombes égyptiennes). La graine est différente des feuilles : goût citronné-épicé (graine) vs herbe fraîche controversée (feuilles). La perception de savon par ~15 % des individus face aux feuilles est liée à des variations du gène OR6A2 (récepteur olfactif). Incontournable dans les cuisines indiennes, mexicaines et moyen-orientales."},
+{theme:"fruits-legumes",q:"La citronnelle",a:"Cymbopogon citratus",family:"Famille : Poaceae (Graminées)",detail:"Grande herbe tropicale originaire d'Asie du Sud-Est, dont les tiges basales sont utilisées en cuisine thaïlandaise, vietnamienne et khmère. L'arôme citronné est dû au citral (géranial + néral). L'huile essentielle est un répulsif naturel contre les moustiques (ci-après nommée citronelle dans les bougies et sprays anti-moustiques)."},
+{theme:"fruits-legumes",q:"Le basilic",a:"Ocimum basilicum",family:"Famille : Lamiaceae",detail:"Herbe aromatique originaire de l'Inde et d'Asie du Sud-Est. Son nom vient du grec basileus (roi). Incontournable dans la cuisine italienne (pesto alla genovese : basilic, ail, parmesan, pignons, huile d'olive). Le basilic thaï (O. basilicum var. thyrsiflorum) a un arôme anisé plus fort. La lumière UV des rayons UV-B stimule la production d'huiles essentielles."},
+{theme:"fruits-legumes",q:"Le thym",a:"Thymus vulgaris",family:"Famille : Lamiaceae",detail:"Plante aromatique méditerranéenne emblématique du maquis et des garrigues. Le thymol, son composé actif principal, est un puissant antiseptique naturel (utilisé dans certains bains de bouche). Avec le laurier et le persil, il compose le bouquet garni classique de la cuisine française. Il existe une centaine d'espèces de thym en Europe."},
+{theme:"fruits-legumes",q:"Le romarin",a:"Salvia rosmarinus",family:"Famille : Lamiaceae",detail:"Reclassifié du genre Rosmarinus au genre Salvia en 2017 par phylogénétique moléculaire. Arbuste méditerranéen aux feuilles persistantes en forme d'aiguilles. Le carnosol et l'acide rosmarinique lui confèrent des propriétés antioxydantes. En cuisine, il parfume les grillades, les pommes de terre rôties et les marinades. Symbole du souvenir en Europe."},
+{theme:"fruits-legumes",q:"La lavande (culinaire)",a:"Lavandula angustifolia",family:"Famille : Lamiaceae",detail:"La lavande vraie est utilisée en Provence dans les mélanges d'herbes (herbes de Provence) et en pâtisserie. À distinguer du lavandin (Lavandula × intermedia, hybride plus camphré). L'huile essentielle de lavande vraie est la plus vendue au monde. La lavande de Haute-Provence bénéficie d'une AOP. La Bulgarie est le premier producteur mondial d'HE de lavande."},
+{theme:"fruits-legumes",q:"La menthe poivrée",a:"Mentha × piperita",family:"Famille : Lamiaceae",detail:"Hybride naturel entre la menthe aquatique (M. aquatica) et la menthe verte (M. spicata), apparu au XVIIe siècle en Angleterre. Le menthol active les récepteurs du froid (TRPM8) en l'absence de baisse de température — d'où la sensation de fraîcheur. Utilisée en cuisine, confiserie, dentifrice, médicaments et huiles essentielles."},
+
+// ══════════════════════════════════════════════════════════════════
+// CÉRÉALES & PSEUDO-CÉRÉALES
+// ══════════════════════════════════════════════════════════════════
+{theme:"fruits-legumes",q:"Le blé tendre (farine de pain)",a:"Triticum aestivum",family:"Famille : Poaceae (Graminées)",detail:"Issu d'une hybridation naturelle il y a ~10 000 ans entre l'engrain (Triticum monococcum), l'amidonnier (T. turgidum) et une graminée sauvage (Aegilops tauschii). L'une des premières plantes domestiquées dans le Croissant fertile. Avec le riz et le maïs, il représente la base alimentaire de l'humanité."},
+{theme:"fruits-legumes",q:"Le blé dur (semoule, pâtes)",a:"Triticum durum",family:"Famille : Poaceae (Graminées)",detail:"Le blé dur est riche en gluten élastique, idéal pour les pâtes alimentaires (sémolina). Originaire du Croissant fertile. L'Italie est le premier transformateur mondial. Coucous, boulgour et semoule sont faits à partir du blé dur. Sa teneur élevée en caroténoïdes (lutéine) lui donne une couleur dorée."},
+{theme:"fruits-legumes",q:"Le riz",a:"Oryza sativa",family:"Famille : Poaceae (Graminées)",detail:"Domestiqué en Chine il y a ~9 000 ans. Deux sous-espèces : japonica (grains ronds, Japon/Corée) et indica (grains longs, Inde/Thaïlande). La riziculture inondée représente ~20 % des calories humaines mondiales et est la principale source de méthane agricole (fermentation anaérobie). Le riz rouge et noir doivent leur couleur aux anthocyanes."},
+{theme:"fruits-legumes",q:"Le maïs",a:"Zea mays",family:"Famille : Poaceae (Graminées)",detail:"Domestiqué au Mexique il y a ~9 000 ans à partir de la téosinte. L'épi sauvage mesurait 2–3 cm ; la sélection a produit l'épi actuel de 20–30 cm en quelques millénaires. C'est la céréale la plus produite au monde (1,1 milliard de t/an). Les États-Unis cultivent 32 % de la production mondiale, principalement pour l'éthanol et les aliments pour animaux."},
+{theme:"fruits-legumes",q:"L'orge",a:"Hordeum vulgare",family:"Famille : Poaceae (Graminées)",detail:"L'une des premières céréales domestiquées (~10 000 ans, Levant). L'orge perlé (décortiqué et poli) est utilisé en soupe et en risotto. L'orge maltée (germination + torréfaction) est la base de la bière et du whisky. Les β-glucanes de l'orge réduisent le cholestérol LDL (reconnu par l'EFSA). Aujourd'hui principalement cultivé pour l'alimentation animale et le maltage."},
+{theme:"fruits-legumes",q:"L'avoine",a:"Avena sativa",family:"Famille : Poaceae (Graminées)",detail:"Domestiquée plus tardivement que le blé ou l'orge (~2 000 av. J.-C. en Europe centrale). Les β-glucanes d'avoine (fibres solubles) réduisent le cholestérol LDL — reconnu par l'EFSA et la FDA. Naturellement sans gluten mais fréquemment contaminée. Les flocons d'avoine (porridge) sont un aliment de base en Écosse et en Scandinavie."},
+{theme:"fruits-legumes",q:"Le seigle",a:"Secale cereale",family:"Famille : Poaceae (Graminées)",detail:"Adapté aux sols pauvres et froids d'Europe centrale et septentrionale. L'ergot du seigle (Claviceps purpurea) a causé des épidémies d'ergotisme au Moyen Âge (« feu de Saint-Antoine ») : hallucinations, convulsions, gangrène. L'acide lysergique (LSD) est un dérivé synthétique des alcaloïdes de l'ergot. La Russie est le premier producteur mondial."},
+{theme:"fruits-legumes",q:"Le sarrasin",a:"Fagopyrum esculentum",family:"Famille : Polygonaceae",detail:"Pseudo-céréale (pas une Graminée) originaire d'Asie centrale, introduite en Europe au XVe siècle. Naturellement sans gluten. La ruche (fleur) est une importante source de nectar pour les abeilles (miel de sarrasin, corsé et foncé). Incontournable dans la cuisine bretonne (galettes de blé noir), russe (blinis) et japonaise (soba). Riche en rutine (flavonoïde)."},
+{theme:"fruits-legumes",q:"Le quinoa",a:"Chenopodium quinoa",family:"Famille : Amaranthaceae",detail:"Originaire des Andes, cultivé depuis 5 000 ans. Pseudo-céréale (proche de la betterave et du chénopode). Contient les 9 acides aminés essentiels — très rare pour une plante. Les saponines de l'enveloppe sont amères et légèrement toxiques ; rincer avant cuisson. Les Incas le considéraient sacré (chisaya mama = mère de tous les grains). La Bolivie et le Pérou dominent la production."},
+{theme:"fruits-legumes",q:"L'amarante",a:"Amaranthus cruentus",family:"Famille : Amaranthaceae",detail:"Pseudo-céréale andine cultivée depuis 6 000–8 000 ans. Plante sacrée des Aztèques, bannie par les conquistadors espagnols pour briser leur religion. Riche en protéines (14–16 %) et en lysine (acide aminé rare dans les céréales). Les graines soufflées (alegría mexicaine) sont recouvertes de miel. L'amarante est aussi une plante ornementale (crête-de-coq)."},
+{theme:"fruits-legumes",q:"Le teff",a:"Eragrostis tef",family:"Famille : Poaceae (Graminées)",detail:"Céréale endémique d'Éthiopie, cultivée depuis 4 000–6 000 ans. Grains minuscules (~1 mm) — son nom vient de l'amharique « tef » (perdu). Base de l'injera (pain fermenté éthiopien). Sans gluten, riche en fer et calcium. Connaît un engouement mondial comme super-aliment sans gluten depuis les années 2010."},
+{theme:"fruits-legumes",q:"Le fonio",a:"Digitaria exilis",family:"Famille : Poaceae (Graminées)",detail:"Considérée comme la plus ancienne céréale d'Afrique de l'Ouest (5 000 ans, Sahel). Rustique, elle pousse en 6–8 semaines dans des sols pauvres et secs. Surnommé « grain de la dignité » au Sénégal et au Mali. Sans gluten, à faible index glycémique. Popularisé en Europe par le chef Pierre Thiam, il connaît un fort regain d'intérêt gastronomique."},
+
+// ══════════════════════════════════════════════════════════════════
+// ÉPICES & AROMATES
+// ══════════════════════════════════════════════════════════════════
+{theme:"fruits-legumes",q:"Le poivre noir",a:"Piper nigrum",family:"Famille : Piperaceae",detail:"Liane originaire de la côte de Malabar (Inde). Le poivre noir (baie cueillie verte, séchée), blanc (baie mûre, dépulpée), rouge (baie mûre) et vert (baie verte, conservée) proviennent tous de la même plante. La pipérine est le composé piquant. Au Moyen Âge, le poivre valait son pesant d'or et servait de monnaie d'échange."},
+{theme:"fruits-legumes",q:"Le poivre long",a:"Piper longum",family:"Famille : Piperaceae",detail:"Le poivre long était la première épice poivrée importée en Europe (avant le poivre noir). Il était mentionné par les Grecs et les Romains (piperi en latin). Tombé en désuétude après l'introduction du poivre noir et du piment d'Amérique, il connaît un regain d'intérêt en cuisine gastronomique. Utilisé en Inde dans les mélanges d'épices et en médecine ayurvédique."},
+{theme:"fruits-legumes",q:"La cannelle de Ceylan",a:"Cinnamomum verum",family:"Famille : Lauraceae",detail:"Provient de l'écorce interne du cannelier, séchée en tubes (quills). À distinguer de la cannelle de Chine (C. cassia), plus piquante et riche en coumarine (potentiellement hépatotoxique à forte dose). La cannelle vraie est plus douce, plus fine et plus chère. Le Sri Lanka assure ~90 % de la production mondiale de cannelle vraie."},
+{theme:"fruits-legumes",q:"Le gingembre",a:"Zingiber officinale",family:"Famille : Zingiberaceae",detail:"Rhizome originaire d'Asie du Sud-Est, cultivé pour ses propriétés aromatiques et médicinales depuis 3 000 ans. Le gingérol (frais) se transforme en shogaol (plus fort) lors du séchage. Reconnu pour ses propriétés antiémétiques (anti-nausées). Introduit en Europe par les Romains, omniprésent au Moyen Âge."},
+{theme:"fruits-legumes",q:"Le curcuma",a:"Curcuma longa",family:"Famille : Zingiberaceae",detail:"Rhizome originaire d'Asie du Sud, base de la cuisine indienne et composant principal du curry. La curcumine est le pigment jaune-orange. Étudiée pour ses propriétés anti-inflammatoires, sa biodisponibilité est faible mais améliorée par la pipérine (poivre noir). L'Inde produit ~80 % de la production mondiale. La teinture est permanente sur les tissus."},
+{theme:"fruits-legumes",q:"La vanille",a:"Vanilla planifolia",family:"Famille : Orchidaceae",detail:"L'une des rares orchidées cultivées à usage alimentaire. Originaire du Mexique, pollinisée par l'abeille Mélipone. La pollinisation manuelle (inventée par Edmond Albius, esclave de 12 ans à La Réunion, en 1841) a permis sa culture mondiale. La vanilline synthétique (issue de la lignine) représente 99 % du marché. Madagascar est le 1er producteur de vanille naturelle."},
+{theme:"fruits-legumes",q:"Le safran",a:"Crocus sativus",family:"Famille : Iridaceae",detail:"L'épice la plus chère au monde (~30 000 €/kg) : chaque fleur ne fournit que 3 stigmates, récoltés à la main à l'aube. Il faut ~150 000 fleurs pour 1 kg de safran séché. L'Iran produit ~90 % de la production mondiale. La crocine lui donne sa couleur jaune. Arôme caractéristique dû au safranal. Utilisé dans le risotto alla milanese et la bouillabaisse."},
+{theme:"fruits-legumes",q:"La cardamome verte",a:"Elettaria cardamomum",family:"Famille : Zingiberaceae",detail:"Surnommée « reine des épices », 3e épice la plus chère après le safran et la vanille. Originaire du Kerala (Inde du Sud). Les gousses vertes contiennent des graines riches en cinéole (eucalyptol). Incontournable dans le café arabe (qahwa) et la cuisine scandinave (cardamom buns). Le Guatemala est devenu le 1er producteur mondial."},
+{theme:"fruits-legumes",q:"La cardamome noire",a:"Amomum subulatum",family:"Famille : Zingiberaceae",detail:"Plus grande et plus rustique que la cardamome verte, avec un arôme fumé et camphré. Originaire de l'Himalaya (Sikkim, Népal, Bhutan). Séchée sur des feux ouverts, ce qui lui confère son caractère fumé. Utilisée dans les currys indiens du Nord et les mélanges d'épices népalais. Très différente de la cardamome verte par l'arôme et les usages culinaires."},
+{theme:"fruits-legumes",q:"La badiane (anis étoilé)",a:"Illicium verum",family:"Famille : Schisandraceae",detail:"Fruit en étoile d'un petit arbre de Chine du Sud. Le même composé aromatique (anéthol) se retrouve dans l'anis vert (Apiaceae) — deux plantes sans parenté proche. Ingrédient du pastis, des cinq-épices chinoises et de l'alcool anisé. L'acide shikimique qu'il contient est la matière première du Tamiflu (oseltamivir, anti-viral contre la grippe)."},
+{theme:"fruits-legumes",q:"Le clou de girofle",a:"Syzygium aromaticum",family:"Famille : Myrtaceae",detail:"Bouton floral séché d'un arbre des Moluques (Indonésie). Contient jusqu'à 15 % d'eugénol, utilisé comme analgésique dentaire naturel. Avant les Grandes Découvertes, les Moluques (« Îles aux épices ») étaient au cœur des guerres coloniales entre Portugais, Espagnols, Hollandais et Anglais. L'Indonésie utilise le clou de girofle dans les cigarettes kretek."},
+{theme:"fruits-legumes",q:"La muscade",a:"Myristica fragrans",family:"Famille : Myristicaceae",detail:"La graine de noix muscade (et son enveloppe rouge = macis) provient d'un arbre des Moluques. La myristicine qu'elle contient est hallucinogène à forte dose (mais la dose toxique est proche de la dose hallucinogène). Incontournable dans la béchamel, les purées et les gratins. Les Hollandais contrôlèrent longtemps son monopole mondial."},
+{theme:"fruits-legumes",q:"La fève tonka",a:"Dipteryx odorata",family:"Famille : Fabaceae",detail:"Graine d'un arbre de la forêt tropicale d'Amérique du Sud. Très riche en coumarine (>3 %, anticoagulant naturel), ce qui la rend illégale comme additif alimentaire aux États-Unis et en Europe (sauf exception). Autorisée en cuisine gastronomique en France dans des quantités infimes. Son arôme de vanille, caramel et amande est unique. Très utilisée par les chefs français."},
+{theme:"fruits-legumes",q:"Le paprika fumé",a:"Capsicum annuum",family:"Famille : Solanaceae",detail:"Le pimentón de la Vera (Estrémadure, Espagne, AOP) est un paprika fumé sur bois de chêne. Il en existe trois types : dulce (doux), agridulce (demi-doux) et picante (fort). Il colore et parfume la charcuterie espagnole (chorizo, lomo). La capsanthine et la capsorubine lui donnent sa couleur rouge intense et sa tenue à la cuisson."},
+{theme:"fruits-legumes",q:"Le sumac",a:"Rhus coriaria",family:"Famille : Anacardiaceae",detail:"Arbuste méditerranéen et moyen-oriental dont les drupes séchées et moulues donnent une poudre rouge-bordeaux acidulée. Très utilisé dans la cuisine du Levant (zaatar, fattoush). À distinguer des sumacs nord-américains toxiques (Toxicodendron radicans, même famille). Riche en tanins et en acide gallique. Utilisé en tannerie au Maroc."},
+{theme:"fruits-legumes",q:"Le poivre de Sichuan",a:"Zanthoxylum simulans",family:"Famille : Rutaceae",detail:"Ce n'est pas un vrai poivre (Piperaceae) mais le péricarpe d'un fruit d'un arbre à rue. Il provoque une sensation de picotement électrique et d'engourdissement (hypoesthésie) liée à l'hydroxy-alpha-sanshool qui active les récepteurs tactiles PIEZO2 et les récepteurs des canaux KCNK. Incontournable dans la cuisine du Sichuan et du Yunnan (mapo tofu)."},
+{theme:"fruits-legumes",q:"L'asafoetida (hing)",a:"Ferula assa-foetida",family:"Famille : Apiaceae",detail:"Résine oléo-gommoreuse extraite des racines de cette ombellifère d'Asie centrale. Son odeur intense (soufre, ail, fermentation) lui vaut le surnom de « merde du diable ». Chauffée dans l'huile, elle développe un arôme ail-oignon subtil. Indispensable dans la cuisine végétarienne brahmane et jaïne en Inde (l'ail et l'oignon y sont proscrits)."},
+{theme:"fruits-legumes",q:"Le galanga",a:"Alpinia galanga",family:"Famille : Zingiberaceae",detail:"Rhizome proche du gingembre, incontournable dans la cuisine thaïlandaise (tom kha gaï), khmère et indonésienne. Son arôme, plus citronné et poivré que le gingembre, est dû à l'acétate de 1'S-1'-acétoxychavicol. Hildegarde de Bingen (XIIe siècle) le prescrivait comme « épice de la vie ». Ne pas confondre avec le petit galanga (Alpinia officinarum)."},
+{theme:"fruits-legumes",q:"Le fenugrec",a:"Trigonella foenum-graecum",family:"Famille : Fabaceae",detail:"À la fois légumineuse et épice. Utilisé depuis 4 000 ans en Inde, Éthiopie et Moyen-Orient. Les graines contiennent de la diosgénine (précurseur de stéroïdes pharmaceutiques) et des fibres mucilagineuses qui réduisent la glycémie post-prandiale. Son arôme évoque le sirop d'érable (sotolone). En excès, il teinte l'urine et la sueur de cette même odeur."},
+{theme:"fruits-legumes",q:"La réglisse",a:"Glycyrrhiza glabra",family:"Famille : Fabaceae",detail:"Plante méditerranéenne dont la racine contient de la glycyrrhizine (50× plus sucrée que le saccharose). La glycyrrhizine inhibe une enzyme rénale, provoquant en consommation excessive une hypertension artérielle et une hypokaliémie (déficit en potassium). La Calabre (Italie) est réputée pour sa réglisse. Utilisée en confiserie, en tabac à priser et en phytothérapie."},
+
+// ══════════════════════════════════════════════════════════════════
+// LÉGUMINEUSES & OLÉAGINEUX
+// ══════════════════════════════════════════════════════════════════
+{theme:"fruits-legumes",q:"L'arachide (cacahuète)",a:"Arachis hypogaea",family:"Famille : Fabaceae",detail:"Légumineuse originaire d'Amérique du Sud (Pérou, Bolivie). Particularité unique : après la fécondation, la fleur s'enterre dans le sol pour que le fruit (gousse) se développe sous terre (géocarpe). Riche en protéines (25 %) et en acides gras mono-insaturés. La Chine est le premier producteur mondial. Les aflatoxines du champignon Aspergillus flavus la contaminent parfois."},
+{theme:"fruits-legumes",q:"Le tournesol",a:"Helianthus annuus",family:"Famille : Asteraceae",detail:"Originaire d'Amérique du Nord (domestiqué par les Amérindiens). Le capitule (« fleur ») est en réalité une inflorescence composée de centaines de fleurons. L'héliotropisme (rotation vers le soleil) n'affecte que les jeunes plants. Riche en vitamine E (tocophérol). L'Ukraine et la Russie fournissent ~60 % de l'huile de tournesol mondiale."},
+{theme:"fruits-legumes",q:"Le colza",a:"Brassica napus",family:"Famille : Brassicaceae",detail:"Hybride entre le chou (B. oleracea) et la navette (B. rapa). L'huile de colza est riche en acide alpha-linolénique (oméga-3) et en acide oléique (oméga-9). Les variétés « 00 » (à faible teneur en acide érucique et glucosinolates) ont été développées au Canada sous le nom de « canola ». Premier oléagineux cultivé en France."},
+{theme:"fruits-legumes",q:"Le lin (graine)",a:"Linum usitatissimum",family:"Famille : Linaceae",detail:"Cultivé depuis 10 000 ans pour ses fibres (tissu de lin) et ses graines oléagineuses. Les graines de lin sont très riches en acide alpha-linolénique (ALA, oméga-3) et en lignanes (phytoestrogènes). L'huile de lin sèche à l'air — utilisée comme vernis. Les graines entières ne sont pas digestibles : les consommer broyées ou moulues pour accéder aux nutriments."},
+{theme:"fruits-legumes",q:"Le cacao",a:"Theobroma cacao",family:"Famille : Malvaceae",detail:"Originaire du bassin de l'Amazone et du Mexique, domestiqué par les Mayas et les Aztèques. Le nom Theobroma signifie « nourriture des dieux » (Linné). Les cabosses (fruits) contiennent des fèves (graines) enrobées d'une pulpe blanche. La fermentation et le séchage développent les précurseurs aromatiques du chocolat. La Côte d'Ivoire est le 1er producteur mondial."},
+{theme:"fruits-legumes",q:"Le caféier (café)",a:"Coffea arabica",family:"Famille : Rubiaceae",detail:"Originaire d'Éthiopie (forêts de Kaffa). Coffea arabica (~75 % de la production mondiale, moins de caféine) et C. canephora (robusta, plus amer, plus de caféine). La caféine est un alcaloïde qui inhibe les récepteurs de l'adénosine, favorisant la vigilance. Les cerises de café (drupes) sont récoltées à la main dans les meilleures plantations. Le Brésil est le 1er producteur."},
+{theme:"fruits-legumes",q:"Le théier (thé)",a:"Camellia sinensis",family:"Famille : Theaceae",detail:"Arbuste originaire du triangle Yunnan-Assam-Myanmar, cultivé depuis ~3 000 ans en Chine. Le thé blanc, vert, oolong, noir et Pu-erh proviennent tous de la même plante — seule la transformation diffère (degré d'oxydation). La théanine, acide aminé spécifique du thé, a des effets anxiolytiques et améliore la concentration. La Chine et l'Inde dominent la production mondiale."},
+
+]; // fin CARDS
+
+// ─── BOTANIQUE GÉNÉRALE (cartes StudySmarter) ──────────────────────────────
+var CARDS_BG = [
+{theme:"botanique-generale",q:"sp. / spp. / ssp. / sspp.",a:"sp. = espèce non identifiée\nspp. = plusieurs espèces non identifiées\nssp. = sous-espèce (sing.)\nsspp. = sous-espèces (plur.)"},
+{theme:"botanique-generale",q:"Espèces parentes de l'hybride Magnolia × soulangeana (mnTK)",a:"« Saoule comme Lili dénudée »\nM. liliiflora × M. denudata"},
+{theme:"botanique-generale",q:"2 caractéristiques de la reproduction chez les thallophytes",a:"1. Alternance des générations variable\n2. Reproduction sexuée variable"},
+{theme:"botanique-generale",q:"Alternance des générations chez les thallophytes (algues)",a:"Spirogyra (algues vertes) : gamétophyte dominant (diploïde = zygote)\nLaminaria : alternance thalles 1n et 2n\nFucus : sporophyte dominant (haploïde = gamètes)"},
+{theme:"botanique-generale",q:"Variabilité de la reproduction sexuée chez les thallophytes",a:"Isogamie\nHétérogamie\nOogamie\nCystogamie"},
+{theme:"botanique-generale",q:"Gamétocyste chez les thallophytes",a:"Cellule à l'origine des gamètes.\nNe donne pas de cellules formant une enveloppe protectrice."},
+{theme:"botanique-generale",q:"Alternance des générations (2 stades)",a:"Stade haploïde 1n (gamétophyte) → donne gamètes\nStade diploïde 2n (sporophyte) → vient d'un zygote"},
+{theme:"botanique-generale",q:"Les 3 types d'alternance des générations",a:"Haplophasique (diploïde = zygote)\nDiplophasique (haploïde = gamètes)\nHaplo-diplophasique (thalles à n et 2n chr.)"},
+{theme:"classification",g:"non-vasc",q:"Spermatophytina (selon ITIS)",a:"● ssDiv.\n= plantes à graines\n↓ Clade Angiospermae (Cl. Magnoliopsida)\n↓ Clade Gymnospermae :\n  ↓ Cl. Cycadopsida\n  ↓ Cl. Ginkgoopsida\n  ↓ Cl. Gnetopsida\n  ↓ Cl. Pinopsida"},
+{theme:"classification",g:"non-vasc",q:"Classification des plantes (Adl et al. 2019)",a:"= Archaeplastida = Plantae (~500 000 sp.)\n↓ Glaucophyta\n↓ Rhodophyta\n↓ Chloroplastida = Viridiplantae = Chlorobionta"},
+{theme:"botanique-generale",q:"Sporophyte vs. Gamétophyte",a:"Sporophyte → produit des spores\nGamétophyte → produit des gamètes"},
+{theme:"classification",g:"non-vasc",q:"Classification des thallophytes (Endlicher)",a:"↓ Algues\n↓ Champignons\n↓ Lichens\n↓ Cyanobactéries\n↓ Hépatiques à thalle (Marchantiophyta)"},
+{theme:"botanique-generale",q:"Algues (thallophytes)",a:"Groupe polyphylétique — pas toutes des plantes ni des thallophytes.\nAlgues vertes, rouges, brunes, glauques, bleues (cyanobactéries).\nPigments : fucoxanthine, phycoérythrine, chlorophylle…"},
+{theme:"classification",g:"non-vasc",q:"Les domaines du vivant (Woese et al. 1990)",a:"↓ Bacteria\n↓ Archaea\n↓ Eukaryota\n(2015 : Archées d'Asgård → modèle à 2 domaines envisagé)"},
+{theme:"classification",g:"non-vasc",q:"Cyanobactéries — taxonomie",a:"● Div. Cyanobacteriota (ICNP 2023)\n↑ Domaine Bacteria\n↓ Cl. Cyanophyceae\n≠ algues (qui sont des eucaryotes)"},
+{theme:"botanique-generale",q:"Cyanobactéries — biologie cellulaire",a:"Mixotrophe\nAbsence de : noyau, plastes, mitochondries, RE, flagelles, repro. sexuée\nPrésence de : thylakoïdes, nucléoïde (anneau ADN), carboxysomes"},
+{theme:"classification",g:"non-vasc",q:"Thallophytes vs. Cormophytes (histoire)",a:"Classification d'Endlicher (XIXe s.)\nRègne végétal divisé en :\n↓ Thallophytes\n↓ Cormophytes"},
+{theme:"botanique-generale",q:"Lichens (thallophytes)",a:"Association symbiotique :\nAlgue verte / cyanobactérie → pigments, alimentation carbonée\nChampignon → filaments, support physique, protection contre déshydratation"},
+{theme:"botanique-generale",q:"Thalle",a:"Organe végétatif pluricellulaire en forme de lame.\nComposé d'un crampon et d'une partie flottante ou rubanée."},
+{theme:"botanique-generale",q:"Cormophytes",a:"Habitat terrestre → rameaux dressés\nAppendices perpendiculaires (captent le soleil)\nGamétanges aériens : anthéridies & archégones\n= Archégoniates\nZygote → embryon = Embryophytes\nAlternance des générations constante"},
+{theme:"classification",g:"non-vasc",q:"Classification des Eukaryota (Adl et al. 2019)",a:"↓ Amorphea\n↓ Diaphoretickes\n↓ Incertae sedis Eukarya"},
+{theme:"classification",g:"non-vasc",q:"Amorphea",a:"● Clade\n↓ Obazoa\n  ↓ Opisthokonta\n    ↓ Holozoa\n    ↓ Nucletmycea\n↓ Amoebozoa"},
+{theme:"classification",g:"non-vasc",q:"Diaphoretickes",a:"● Clade\n↓ Archaeplastida (Plantae)\n↓ SAR (inclut algues, dont Phaeophyceae tq Fucales, Laminariales)"},
+{theme:"classification",g:"non-vasc",q:"Viridiplantae",a:"● ssR (ITIS)\n= Chlorobionta (végétaux verts)\n↓ InfraR Chlorophyta (algues vertes)\n↓ InfraR Streptophyta"},
+{theme:"classification",g:"non-vasc",q:"Streptophyta",a:"● InfraR (ITIS & Leliart 2012)\n↓ Embryophyta\n↓ Algues streptophytes (6 classes)\n~Synapomorphies :\n  Photorespiration par glycolate oxydase\n  Pas de matrotrophe\n  Fécondation par zoïdogamie"},
+{theme:"classification",g:"non-vasc",q:"Algues streptophytes",a:"● Grade paraphylétique (les Embryophytes en sortent)\n↑ InfraR Streptophyta\n~6 classes :\n↓ Cl. Mesostigmatophyceae\n↓ Cl. Chlorokybophyceae\n↓ Cl. Klebsormidiophyceae\n↓ Cl. Charophyceae\n↓ Cl. Coleochaetophyceae\n↓ Cl. Zygnematophyceae (groupe-frère des Embryophytes)"},
+{theme:"classification",g:"non-vasc",q:"Zygnematophyceae",a:"● Cl.\n↑ Algues streptophytes\n~Groupe-frère des Embryophyta (Wickett et al. 2014)\n~~4000 espèces ; eaux douces stagnantes\n~Reproduction par conjugaison (pas de flagelles)\n~Genres principaux :\nSpirogyra\nMougeotia\nDesmidiales (Cosmarium, Micrasterias…)"},
+{theme:"classification",g:"non-vasc",q:"Charophyceae",a:"● Cl.\n↑ Algues streptophytes\n= Characées s.s.\n~Algues à thalles complexes (verticilles)\n~~400 espèces ; eaux douces\n~Genres principaux :\nChara (incrusté de CaCO₃ → odeur ail)\nNitella\nTolypella"},
+{theme:"classification",g:"non-vasc",q:"Embryophyta",a:"● SuperDiv (ITIS)\n= Cormophytes = Archégoniates = Landpflanzen\n↓ Div. Anthocerotophyta\n↓ Div. Bryophyta\n↓ Div. Marchantiophyta\n↓ Div. Tracheophyta"},
+{theme:"classification",g:"non-vasc",q:"Tracheophyta",a:"● Div.\n= Tracheobionta = Plantes vasculaires\n↓ Cl. Lycopodiopsida\n↓ Cl. Polypodiopsida (= Monilophyta)\n↓ Clade Spermatophyta"},
+{theme:"classification",g:"non-vasc",q:"Hiérarchisation jusqu'aux plantes à graines",a:"R.    Archaeplastida\nssR.  Viridiplantae\niR.   Streptophyta\nsDiv. Embryophyta\nDiv.  Tracheophyta\nssDiv. Spermatophytina"},
+{theme:"classification",g:"non-vasc",q:"Classification botanique classique",a:"↓ Cryptogames\n↓ Phanérogames (= Spermatophytina)"},
+{theme:"botanique-generale",q:"Confusions Mimosa / Acacia / Robinia",a:"Lat. Robinia = Fr. Acacia\nLat. Acacia = Fr. Mimosa\nLat. Mimosa = Fr. Sensitive"},
+{theme:"botanique-generale",q:"Suffixes taxonomiques",a:"ssCl  : -idae\nssO   : -iineae\nssF   : -oideae\nSO    : -anae\nCl    : -opsida\nssDiv : -phytina"},
+{theme:"botanique-generale",q:"Groupe polyphylétique",a:"Partie des descendants d'un ancêtre commun, sans l'ancêtre ni tous les descendants.\nEx. : « animaux à sang chaud » (mammifères + oiseaux).\nNon accepté par les cladistes."},
+{theme:"botanique-generale",q:"Groupe paraphylétique",a:"Partie des descendants d'un ancêtre commun, avec l'ancêtre mais sans certains descendants.\nEx. : reptiles (sans oiseaux ni mammifères).\nAccepté par les évolutionnistes."},
+{theme:"botanique-generale",q:"Groupe monophylétique",a:"Tous les descendants d'un ancêtre commun + l'ancêtre.\nEx. : amniotes.\n= Clade — accepté par les cladistes."},
+{theme:"botanique-generale",q:"Synapomorphie",a:"Caractère dérivé apparu chez un ancêtre → transmis à tous ses descendants.\nDéfinit un nouveau clade."},
+{theme:"botanique-generale",q:"Apomorphie",a:"Nouvelle dérive d'un caractère synapomorphique chez un descendant.\nPeut devenir une nouvelle synapomorphie si ce descendant engendre un nouveau clade."},
+{theme:"botanique-generale",q:"Symplésiomorphie",a:"Caractère ancestral partagé par plusieurs taxons, sauf ceux portant une synapomorphie dérivée.\nDéfinit un groupe paraphylétique."},
+{theme:"botanique-generale",q:"Caractère ancestral vs. caractère dérivé",a:"Ancestral (plésiomorphie) : inchangé au cours de l'évolution.\n  Commun à plusieurs taxons → symplésiomorphie → groupe paraphylétique.\nDérivé (apomorphie) : modification chez une espèce et ses descendants.\n  Propre à un taxon → autapomorphie.\n  Commun à plusieurs → synapomorphie → clade."},
+];
+CARDS = CARDS.concat(CARDS_BG);
+
+// ─── ANGIOSPERMES → Classification ───────────────────────────────────────────
+var CARDS_ANGIO = [
+{theme:"angiospermes",q:"Angiospermes — position taxonomique",a:"● Clade Magnoliophyta (Bedecktsamigen Pflanzen)\n↑ ssDiv. Spermatophytina\n~1 seule classe : Magnoliopsida\n~1 seule sous-classe : Magnoliidae"},
+{theme:"angiospermes",q:"Magnoliidae",a:"● ssCl.\n↑ Cl. Magnoliopsida\n~2 clades :\n↓ Angiospermes basales\n↓ Mesangiospermae"},
+{theme:"angiospermes",q:"Angiospermes basales",a:"● Grade paraphylétique des ANA (ex-ANITA)\n~175 espèces\n~3 super-ordres (chacun avec 1 ordre) :\n↓ SO Amborellanae\n↓ SO Nymphaeanae\n↓ SO Austrobaileyanae"},
+{theme:"angiospermes",q:"Mesangiospermae",a:"● Clade\n↑ ssCl. Magnoliidae\n↓ SO Magnolianae (= Magnoliids)\n↓ O Chloranthales\n↓ SO Lilianae (= Monocotyledonae)\n↓ Clade Eudicotyledonae (= dicotylédones vraies)\n↓ O Ceratophyllales"},
+{theme:"angiospermes",q:"Magnolianae",a:"● SO (Chase & Reveal)\n= Magnoliids\n↑ Clade Mesangiospermae\n~4 ordres :\n↓ O Canellales\n↓ O Piperales\n↓ O Laurales\n↓ O Magnoliales"},
+];
+CARDS = CARDS.concat(CARDS_ANGIO);
+
+// ─── GYMNOSPERMES (Nacktsamer) ────────────────────────────────────────────────
+var CARDS_GYMNO = [
+{theme:"classification",g:"vasc-sans-fleurs",q:"Classification des gymnospermes (Christenhusz et al. 2011)",a:"~MnTK : « ci-gît Gnépine »\n↓ ssCl. Cycadidae\n↓ ssCl. Ginkgoidae\n↓ ssCl. Gnetidae\n↓ ssCl. Pinidae"},
+{theme:"classification",g:"vasc-sans-fleurs",q:"Cycadidae",a:"● ssCl.\n↓ O Cycadales\n  ↓ F Cycadaceae (1 genre : Cycas)\n  ↓ F Zamiaceae (10 genres, dont Zamia)"},
+{theme:"classification",g:"vasc-sans-fleurs",q:"Gnetidae",a:"● ssCl.\n↓ O Welwitschiales\n  ~1 espèce : Welwitschia mirabilis\n↓ O Gnetales\n  ~1 genre : Gnetum (ex : G. africanum, G. gnemon)\n↓ O Ephedrales\n  ~1 genre : Ephedra (ex : E. distachya, E. sinica)"},
+{theme:"classification",g:"vasc-sans-fleurs",q:"Pinidae",a:"● ssCl.\n~MnTK : « PAC-1-2-3 »\n↓ O Pinales (1 famille)\n↓ O Araucariales (2 familles)\n↓ O Cupressales (3 familles)"},
+{theme:"classification",g:"vasc-sans-fleurs",q:"Pinales",a:"● O\n↑ ssCl. Pinidae\n↓ F Pinaceae"},
+{theme:"classification",g:"vasc-sans-fleurs",q:"Araucariales",a:"● O\n↑ ssCl. Pinidae\n↓ F Araucariaceae\n↓ F Podocarpaceae"},
+{theme:"classification",g:"vasc-sans-fleurs",q:"Cupressales",a:"● O\n↑ ssCl. Pinidae\n↓ F Cupressaceae\n↓ F Taxaceae\n↓ F Sciadopityaceae"},
+{theme:"classification",g:"vasc-sans-fleurs",q:"Sciadopityaceae",a:"● F\n↑ O Cupressales\n~1 seule espèce : Sciadopitys verticillata"},
+{theme:"classification",g:"vasc-sans-fleurs",q:"Cupressaceae",a:"● F\n↑ O Cupressales\n~29 genres, ~130 espèces, 7 sous-familles :\n↓ ssF Cupressoideae\n↓ ssF Taxodioideae\n↓ ssF Sequoioideae\n↓ ssF Callitroideae (Callitris…)\n↓ ssF Athrotaxidoideae (Athrotaxis)\n↓ ssF Taiwanioideae (Taiwania)\n↓ ssF Cunninghamioideae (Cunninghamia)"},
+{theme:"classification",g:"vasc-sans-fleurs",q:"Sequoioideae",a:"● ssF\n↑ F Cupressaceae\n~3 espèces :\nSequoia sempervirens\nMetasequoia glyptostroboides\nSequoiadendron giganteum"},
+{theme:"classification",g:"vasc-sans-fleurs",q:"Taxodioideae",a:"● ssF\n↑ F Cupressaceae\n~5 espèces en 3 genres :\nTaxodium distichum, T. ascendens, T. mucronatum\nCryptomeria japonica\nGlyptostrobus pensilis"},
+{theme:"classification",g:"vasc-sans-fleurs",q:"Cupressoideae",a:"● ssF\n↑ F Cupressaceae\n~10 genres, dont :\nCupressus\nChamaecyparis\nThuya\nThujopsis\nJuniperus\nCalocedrus\nFokienia\nMicrobiota\nTetraclinis\nPlatycladus"},
+{theme:"classification",g:"vasc-sans-fleurs",q:"Taxaceae",a:"● F\n↑ O Cupressales\n~6 genres :\nTaxus, Torreya, Cephalotaxus, Pseudotaxus, Austrotaxus, Amentotaxus"},
+{theme:"botanique-generale",q:"Rameaux chez Pinus",a:"Auxiblastes (rameaux longs)\n  Portent des euphylles (f. stériles) en écailles apprimées, non photosynthétiques\nBrachyblastes (rameaux nains)\n  Qlq cm max.\n  Se terminent par un fascicule d'aiguilles (pseudophylles)\n  Entouré à la base par une gaine de cataphylles"},
+{theme:"botanique-generale",q:"Pinus — 5 aiguilles par fascicule",a:"P. cembra — pin des Alpes / arole\nP. strobus — pin blanc / pin de Weymouth\nP. wallichiana — pin de l'Himalaya\nP. parviflora — pin blanc du Japon\nP. peuce — pin de Macédoine"},
+{theme:"botanique-generale",q:"Pinus — 3 aiguilles par fascicule",a:"P. ponderosa — pin jaune\nP. jeffreyi — pin de Jeffrey"},
+{theme:"botanique-generale",q:"Pinus — 2 aiguilles > 7 cm",a:"P. nigra\nP. pinaster\nP. pinea\nP. leucodermis"},
+{theme:"botanique-generale",q:"Pinus — 2 aiguilles 5–9 cm",a:"P. halepensis — pin d'Alep / pin blanc de Provence"},
+{theme:"botanique-generale",q:"Pinus — 2 aiguilles < 7 cm",a:"P. sylvestris — pin sylvestre\nP. mugo — pin à crochets / pin des montagnes\nP. contorta — pin tordu"},
+{theme:"botanique-generale",q:"Hybride P. sylvestris × P. mugo",a:"Pinus × rhaetica"},
+{theme:"botanique-generale",q:"Sections de Juniperus — différences",a:"sect. Juniperus : aiguilles verticillées par 3\nsect. Sabina : écailles piquantes ou partiellement piquantes\nsect. Caryocedrus : aiguilles verticillées par 3"},
+{theme:"botanique-generale",q:"Juniperus sect. Sabina vs. Cupressus — 5 différences",a:"Juniperus sect. Sabina\n  Écailles piquantes (ou partiellement)\n  Sols pauvres\n  Cônes globuleux avec pruine\n  Plutôt dioïque\n  Petits arbres jusqu'à 20 m, parfois prostrés\nCupressus\n  Écailles jamais piquantes\n  Sols humides\n  Cônes globuleux sans pruine\n  Plutôt monoïque\n  Grands arbres élancés jusqu'à 40 m"},
+{theme:"botanique-generale",q:"Thuya vs. Cupressus — différences",a:"Thuya\n  Odeur plus marquée que le cyprès\n  Couleurs peu variées (vert foncé)\n  Cônes généralement allongés et jaunâtres\n  Tolèrent ombre et sols tassés (résistants)\nCupressus\n  Odeur de citron\n  Couleurs variées\n  Cônes généralement globuleux et ligneux\n  Sensibles à l'ombre et aux sols tassés"},
+{theme:"botanique-generale",q:"Microbiota",a:"= ssF Cupressoideae\n~1 seule espèce : M. decussata (FR : cyprès de Sibérie)\nPort rampant, jusqu'à 5 m d'étalement\nMonoïque\nFeuillage squamiforme non piquant\nCônes 2–3 mm contenant 1 seule graine"},
+{theme:"botanique-generale",q:"Fokienia",a:"= ssF Cupressoideae\n~1 seule espèce : F. hodginsii (FR : bois de Siam)\nPort conique (MnTK : chapeau chinois)\nMonoïque\nFeuillage squamiforme non piquant\nCônes globuleux\nChine & Vietnam"},
+{theme:"botanique-generale",q:"Tetraclinis",a:"= ssF Cupressoideae\n~1 seule espèce : T. articulata (FR : cyprès de l'Atlas)\nPort de cyprès, pouvant faire taillis, 10–20 m\nMonoïque\nFeuillage squamiforme non piquant\nCônes ressemblent au fusain\nEurope du sud et Maghreb"},
+];
+CARDS = CARDS.concat(CARDS_GYMNO);
+
+// ─── MONOCOTYLÉDONES ──────────────────────────────────────────────────────────
+var CARDS_MONO = [
+{theme:"angiospermes",q:"Classification des monocotylédones — 11 ordres (sans MnTK)",a:"↓ O Acorales\n↓ O Alismatales\n↓ O Petrosaviales\n↓ O Dioscoreales\n↓ O Pandanales\n↓ O Liliales\n↓ O Asparagales\n~Clade des Commelinideae :\n↓ O Arecales (inclut Dasypogonaceae depuis APG IV)\n↓ O Poales\n↓ O Zingiberales\n↓ O Commelinales"},
+{theme:"angiospermes",q:"Classification des monocotylédones — MnTK",a:"« À côté d'Alice, Petro, le dieu-Panda, lit l'Aspar comme Daisy\nComme d'ha', Eurêka poil-au-zinc ! »"},
+{theme:"angiospermes",q:"Monocotylédones — synonymes",a:"SO Lilianae\nLiliopsida\nMonokotyledonen\nEinkeimblättrigen Pflanzen"},
+{theme:"angiospermes",q:"Poaceae — nombre de ssF et cladogramme (1/3)",a:"~12 ssF au total\n↓ ssF Anomochlooïdeae\n↓ ssF Pharoideae\n↓ ssF Puelioideae\n~puis :\n↓ Clade BOP (BEP)\n↓ Clade PACMAD (PACC)"},
+{theme:"angiospermes",q:"Poaceae — clade BOP (2/3)",a:"↓ ssF Oryzoideae (= Ehrhartoideae)\n↓ ssF Bambusoideae\n↓ ssF Pooideae (les + nbses en nb d'espèces)"},
+{theme:"angiospermes",q:"Poaceae — clade PACMAD (3/3)",a:"~MnTK : « Aristide panique army dans chlore »\n↓ ssF Aristidoideae\n↓ ssF Panicoideae (les + nbses en nb d'espèces)\n↓ ssF Arundinoideae\n↓ ssF Micrairoideae\n↓ ssF Danthonioideae\n↓ ssF Chloridoideae"},
+{theme:"botanique-generale",q:"Poaceae — voies photosynthétiques",a:"Clade BOP → photosynthèse en C3\n~Clade PACMAD → C3 et C4, sauf :\nArundinoideae → C3\nDanthonioideae → C3"},
+];
+CARDS = CARDS.concat(CARDS_MONO);
+
+// ─── EUDICOTYLÉDONES ──────────────────────────────────────────────────────────
+var CARDS_EUDI = [
+{theme:"angiospermes",q:"Eudicotylédones — base du cladogramme APG IV",a:"Clade Eudicotylédones basales (/!\\ pas de clade selon APG IV)\n↓ O Ranunculales\n↓ O Proteales\n↓ O Trochodendrales\n↓ O Buxales\n~→ Clade Eudicotylédones supérieures"},
+{theme:"angiospermes",q:"Clade Eudicotylédones supérieures",a:"↓ O Gunnerales\n~Clade Pentapetalidae (/!\\ pas de clade selon APG IV) :\n  ↓ Clade Superrosidae\n  ↓ Clade Superasteridae\n  ↓ O Dilleniales"},
+{theme:"angiospermes",q:"Superrosidae — base du cladogramme APG IV",a:"● Clade\n= Superrosids\n↓ O Saxifragales\n↓ SO Rosanae (= Rosidées = Rosids)"},
+{theme:"angiospermes",q:"Rosanae",a:"● SO\n= Rosids = Rosidées\n↑ Clade Superrosidae\n↓ O Vitales\n↓ Clade Fabidées (Eurosidées I)\n↓ Clade Malvidées (Eurosidées II)"},
+{theme:"angiospermes",q:"Eurosidées I",a:"● Clade\n= Fabidées\n↑ SO Rosanae\n~MnTK : « Maalox, c'est culcul fafa rosy »\n↓ O Malpighiales\n↓ O Oxalidales\n↓ O Celastrales\n↓ O Cucurbitales\n↓ O Fabales\n↓ O Fagales\n↓ O Rosales\n↓ O Zygophyllales"},
+{theme:"angiospermes",q:"Eurosidées II",a:"● Clade\n= Malvidées\n↑ SO Rosanae\n~MnTK : « Au Brésil Huerta, Jérémy sape mal Pierre Crosse »\n↓ O Brassicales\n↓ O Huerteales\n↓ O Geraniales\n↓ O Myrtales\n↓ O Sapindales\n↓ O Malvales\n↓ O Picramniales\n↓ O Crossosomatales"},
+{theme:"angiospermes",q:"Superasteridae — base du cladogramme APG IV",a:"● Clade\n= Superasterids\n~MnTK : « Berbère sans caries »\n↓ O Berberisopsidales\n↓ O Santalales\n↓ O Caryophyllales\n↓ SO Asteranae (= Astéridées = Asterids)"},
+{theme:"angiospermes",q:"Asteranae",a:"● SO\n= Asterids = Astéridées\n↑ Clade Superasteridae\n~MnTK : « Corner Lacant »\n↓ O Cornales\n↓ O Ericales\n↓ Clade Lamiidées (Euastéridées I)\n↓ Clade Campanulidées (Euastéridées II)"},
+{theme:"angiospermes",q:"Euastéridées I",a:"● Clade\n= Lamiidées\n↑ SO Asteranae\n~MnTK : « Beau gars gentil la sauva Metin Ica »\n↓ O Boraginales\n↓ O Garryales\n↓ O Gentianales\n↓ O Lamiales\n↓ O Solanales\n↓ O Vahliales\n↓ O Icacinales\n↓ O Metteniusales"},
+{theme:"angiospermes",q:"Euastéridées II",a:"● Clade\n= Campanulidées\n↑ SO Asteranae\n~MnTK : « Happy Astère dit à qui escallope brûnie »\n↓ O Apiales\n↓ O Asterales\n↓ O Dipsacales\n↓ O Aquifoliales\n↓ O Escalloniales\n↓ O Paracryphiales\n↓ O Bruniales"},
+];
+CARDS = CARDS.concat(CARDS_EUDI);
+
+// ─── MOUSSES & PLANTES ALLIÉES ────────────────────────────────────────────────
+var CARDS_MOUSSES = [
+{theme:"classification",g:"non-vasc",q:"Bryophyta (Frey & Stech 2009)",a:"● Div.\n= Laubmoose\n↓ ssDiv. Takakiophytina\n↓ ssDiv. Sphagnophytina\n↓ ssDiv. Bryophytina"},
+{theme:"classification",g:"non-vasc",q:"Marchantiophyta (Frey & Stech 2009)",a:"● Div.\n= Hepaticophyta = Lebermoose\n~SClasse I :\n  ↓ Cl. Treubiopsida\n  ↓ Cl. Haplomitriopsida\n~SClasse II :\n  ↓ Cl. Blasiopsida\n  ↓ Cl. Marchantiopsida\n~SClasse III :\n  ↓ Cl. Fossombroniopsida\n  ↓ Cl. Pallaviciniopsida\n  ↓ Cl. Pelliopsida\n~SClasse IV :\n  ↓ Cl. Jungermanniopsida"},
+{theme:"classification",g:"non-vasc",q:"Haplomitriopsida",a:"● Cl.\n↑ Div. Marchantiophyta\n~Lignée basale des hépatiques (groupe-frère de toutes les autres)\n~Petite classe mais clé phylogénétique\n~Genres :\nHaplomitrium\nTreubia (parfois rattaché à Treubiopsida)"},
+{theme:"classification",g:"non-vasc",q:"Marchantiopsida",a:"● Cl.\n↑ Div. Marchantiophyta\n= Hépatiques à thalle « classique »\n~Thalles complexes avec chambres aériennes & pores\n~Genres principaux :\nMarchantia polymorpha (modèle)\nLunularia cruciata\nConocephalum conicum\nRiccia (thalle simple, sans chambres)"},
+{theme:"classification",g:"non-vasc",q:"Jungermanniopsida",a:"● Cl.\n↑ Div. Marchantiophyta\n~La plus grande Cl. (~85 % des hépatiques, ~8000 sp.)\n~Hépatiques à feuilles (« leafy liverworts ») surtout\n~O Jungermanniales = le plus gros ordre\n~Genres exemple : Frullania, Lophocolea, Plagiochila"},
+{theme:"classification",g:"non-vasc",q:"Anthocerotophyta (Frey & Stech 2009 ; ITIS)",a:"● Div.\n= Hornmoose\n↓ Cl. Leiosporocerotopsida\n↓ Cl. Anthocerotopsida"},
+{theme:"classification",g:"non-vasc",q:"Bryophytina (Frey & Stech 2009)",a:"● ssDiv.\n↑ Div. Bryophyta\n↓ Cl. Andreaeopsida\n↓ Cl. Oedipodiopsida\n↓ Cl. Tetraphidopsida\n↓ Cl. Polytrichopsida\n↓ Cl. Bryopsida"},
+{theme:"classification",g:"non-vasc",q:"Bryopsida (Frey & Stech 2009)",a:"● Cl.\n↑ ssDiv. Bryophytina\n~8 sous-classes, dont :\n↓ ssCl. Bryidae (13 ordres)"},
+{theme:"classification",g:"non-vasc",q:"Leiosporocerotopsida (Frey & Stech 2009 ; ITIS)",a:"● Cl.\n↑ Div. Anthocerotophyta\n↓ O Leiosporocerotales\n  ↓ F Leiosporocerotaceae"},
+{theme:"classification",g:"non-vasc",q:"Anthocerotopsida (Frey & Stech 2009 ; ITIS)",a:"● Cl.\n↑ Div. Anthocerotophyta\n↓ ssCl. Anthocerotidae → O → F\n↓ ssCl. Notothylatidae → O → F\n↓ ssCl. Dendrocerotidae :\n  ↓ O Dendrocerotales\n  ↓ O Phymatocerotales"},
+];
+CARDS = CARDS.concat(CARDS_MOUSSES);
+
+// ─── FOUGÈRES & PLANTES ALLIÉES ───────────────────────────────────────────────
+var CARDS_FOUG = [
+// Classification
+{theme:"classification",g:"vasc-sans-fleurs",q:"Lycopodiopsida (PPG I)",a:"● Cl.\n= ssDiv. Lycopodiophytina\n= Bärlappe\n~MnTK : « lycopodiopsida c'est LISSE »\n↓ O Lycopodiales\n↓ O Isoëtales\n↓ O Selaginellales\n~1 F / O ; pls O éteints"},
+{theme:"classification",g:"vasc-sans-fleurs",q:"Monilophyta",a:"● Cl.\n= Polypodiopsida (PPG I)\n= ssDiv. Polypodiophytina (ancienne classif.)\n= Farne\n~Ancien : Monilophyta + Lycopodiophytina = Pteridophyta\n~Actuel : Monilophyta + clade Spermatophyta = Euphyllophyta"},
+{theme:"classification",g:"vasc-sans-fleurs",q:"Polypodiopsida (PPG I)",a:"● Cl.\n= Monilophyta (Chase & Reveal)\n= Farne\n~MnTK : « Equioph Marpol »\n↓ ssCl. Equisetidae\n↓ ssCl. Ophioglossidae (= Psilotopsidae)\n↓ ssCl. Marattiidae\n↓ ssCl. Polypodiidae"},
+{theme:"classification",g:"vasc-sans-fleurs",q:"Classification des fougères selon les sporanges",a:"Fougères eusporangiées :\n  ssCl. Equisetidae\n  ssCl. Ophioglossidae (= Psilotopsidae)\n  ssCl. Marattiidae\nFougères leptosporangiées :\n  ssCl. Polypodiidae"},
+{theme:"classification",g:"vasc-sans-fleurs",q:"Equisetidae (PPG I)",a:"● ssCl.\n↑ Cl. Polypodiopsida\n↓ O Equisetales\n  ↓ F Equisetaceae\n  ~nbses F éteintes\n~pls O éteints"},
+{theme:"classification",g:"vasc-sans-fleurs",q:"Ophioglossidae (PPG I)",a:"● ssCl.\n↑ Cl. Polypodiopsida\n= Psilotopsidae\n↓ O Ophioglossales\n  ↓ F Ophioglossaceae\n↓ O Psilotales\n  ↓ F Psilotaceae"},
+{theme:"classification",g:"vasc-sans-fleurs",q:"Marattiidae (PPG I)",a:"● ssCl.\n↑ Cl. Polypodiopsida\n↓ O Marattiales\n  ↓ F Marattiaceae"},
+{theme:"classification",g:"vasc-sans-fleurs",q:"Polypodiidae (PPG I)",a:"● ssCl.\n↑ Cl. Polypodiopsida\n~MnTK : « La sciatique d'Hippolite-Osmund chie gleich Salvini »\n~MnTK2 : « gleich SS »\n~7 ordres :\n↓ O Osmundales\n↓ O Hymenophyllales\n↓ O Gleicheniales\n↓ O Schizaeales\n↓ O Salviniales\n↓ O Cyatheales\n↓ O Polypodiales"},
+{theme:"classification",g:"vasc-sans-fleurs",q:"Polypodiales (PPG I)",a:"● O\n↑ ssCl. Polypodiidae\n~MnTK : « Saclipedenasspol »\n↓ ssO Saccolomatineae\n↓ ssO Lindsaeineae\n↓ ssO Pteridineae\n↓ ssO Dennstaedtiineae\n↓ ssO Aspleniineae (= eupolypodes II)\n↓ ssO Polypodiineae (= eupolypodes I)"},
+{theme:"classification",g:"vasc-sans-fleurs",q:"Aspleniineae",a:"● ssO\n↑ O Polypodiales\n= eupolypodes II\n~MnTK : « A → /\\ → II → 11 F »\n~11 F selon PPG I, dont :\n↓ F Aspleniaceae\n↓ F Athyriaceae\n↓ F Blechnaceae\n↓ F Cystopteridaceae\n↓ F Thelypteridaceae"},
+{theme:"classification",g:"vasc-sans-fleurs",q:"Polypodiineae",a:"● ssO\n↑ O Polypodiales\n= eupolypodes I\n~MnTK : « NPD »\n~9 F selon PPG I, dont :\n↓ F Nephrolepidaceae\n↓ F Polypodiaceae\n↓ F Dryopteridaceae"},
+{theme:"classification",g:"vasc-sans-fleurs",q:"Osmundales (PPG I)",a:"● O\n↑ ssCl. Polypodiidae\n↓ F Osmundaceae (1 seule F)\n~6 genres, ~20 espèces, dont :\nOsmunda (ex. O. regalis, O. cinnamomea)\nLeptopteris\nTodea"},
+{theme:"classification",g:"vasc-sans-fleurs",q:"Hymenophyllales (PPG I)",a:"● O\n↑ ssCl. Polypodiidae\n↓ F Hymenophyllaceae (1 seule F)\n~nbses espèces, dont :\nHymenophyllum tunbridgense\nH. wilsonii\nTrichomanes speciosum"},
+{theme:"classification",g:"vasc-sans-fleurs",q:"Gleicheniales (PPG I)",a:"● O\n↑ ssCl. Polypodiidae\n~MnTK : « Gleich c'est glace (glacis 6G), frozen (2G), corbeau diptère (2G) »\n~3 F :\n↓ F Dipteridaceae (2 genres)\n↓ F Matoniaceae (2 genres)\n↓ F Gleicheniaceae (6 genres, dont Gleichenia, Dicranopteris)"},
+{theme:"classification",g:"vasc-sans-fleurs",q:"Schizaeales (PPG I)",a:"● O\n↑ ssCl. Polypodiidae\n~MnTK : « schizophrène → LSA »\n~3 F :\n↓ F Lygodiaceae (1 genre : Lygodium)\n↓ F Schizaeaceae (2 genres, dont Schizaea)\n↓ F Anemiaceae (1 genre : Anemia)"},
+{theme:"classification",g:"vasc-sans-fleurs",q:"Salviniales (PPG I)",a:"● O\n↑ ssCl. Polypodiidae\n~2 F :\n↓ F Salviniaceae (2 genres : Azolla & Salvinia natans)\n↓ F Marsileaceae (3 genres, dont Marsilea quadrifolia & Pilularia globulifera)"},
+{theme:"classification",g:"vasc-sans-fleurs",q:"Cyatheales (PPG I)",a:"● O\n↑ ssCl. Polypodiidae\n~8 F, dont :\n↓ F Dicksoniaceae (dont Dicksonia antarctica)\n↓ F Cyatheaceae (dont Cyathea)"},
+{theme:"classification",g:"vasc-sans-fleurs",q:"Marattiales (PPG I)",a:"● O\n↑ ssCl. Marattiidae\n↓ F Marattiaceae (1 seule F)\n~6 genres, dont :\nDanaea\nMarattia"},
+{theme:"classification",g:"vasc-sans-fleurs",q:"Lycopodiales (PPG I)",a:"● O\n↑ Cl. Lycopodiopsida\n↓ F Lycopodiaceae (1 seule F)\n~4 genres, ~400 espèces, dont :\nLycopodium clavatum\nLycopodiella inundata\nHuperzia selago"},
+{theme:"classification",g:"vasc-sans-fleurs",q:"Selaginellales (PPG I)",a:"● O\n↑ Cl. Lycopodiopsida\n↓ F Selaginellaceae (1 seule F)\n~1 genre, ~700 espèces, dont :\nSelaginella selaginoides\nS. helvetica\nS. kraussiana"},
+{theme:"classification",g:"vasc-sans-fleurs",q:"Isoëtales (PPG I)",a:"● O\n↑ Cl. Lycopodiopsida\n↓ F Isoëtaceae (1 seule F)\n~1 genre, ~200 espèces, dont :\nIsoetes lacustris"},
+// Fougères (morphologie / caractéristiques)
+{theme:"botanique-generale",q:"Caractéristiques des Osmundales",a:"Sporanges sans anulus (cellules plus grosses), sans indusie, non groupés en sores.\nSporanges sur sporophylles (Osmunda cinnamomea), sur trophophylle (O. regalis) ou sur la face inférieure de la feuille (Todea sp.).\nTige : siphonostèle avec xylème interne.\nOsmundales actuelles : tronc enterré (racines + restes de feuilles tombées)."},
+{theme:"botanique-generale",q:"Osmundales — position phylogénétique",a:"Premières fougères leptosporangiées.\nFont la transition avec les fougères eusporangiées."},
+{theme:"botanique-generale",q:"Caractéristiques des Hymenophyllales",a:"Feuilles à 1 seule épaisseur de cellules (du grec ymenas = membrane).\nSouvent épiphytes, de petite taille.\nRhizome rampant minuscule.\nFeuilles poilues, lobées, pennées, dichotomes (exceptions).\nSporanges cupuliformes, groupés en sores sur le bord des feuilles, entourés d'indusies tubulaires, campanulées ou à deux lèvres.\nProthalle lobé, souvent filiforme.\nArchégones toujours enveloppés."},
+{theme:"botanique-generale",q:"Caractéristiques des Gleicheniales",a:"Stèle des racines avec 3–5 faisceaux de protoxylème.\nAnthéridies : 6–12 cellules pariétales étroites, tordues ou courbées.\nTropicales et subtropicales."},
+{theme:"botanique-generale",q:"Caractéristiques des Schizaeales",a:"Dimorphisme des frondes stériles et fertiles.\nAbsence de sores bien définis.\nSporanges avec annulus transverse, subapical et continu."},
+{theme:"botanique-generale",q:"Caractéristiques des Salviniales",a:"Fougères aquatiques.\nAérenchyme dans les racines, pousses et pétioles.\nVaisseaux anastomosés des feuilles.\nDimorphisme des frondes stériles et fertiles.\nHétérosporie : micro-/mégaspores à l'origine de gamétophytes mâles et femelles.\nMonomégasporie : 1 mégaspore produite par mégasporange.\nGermination endosporique (gamétophytes réduits).\nAbsence d'annulus.\nAzolla event (−50 millions d'années)."},
+];
+CARDS = CARDS.concat(CARDS_FOUG);
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+var activeThemes = {'fruits-legumes':false,'botanique-generale':false,'classification':false,'angiospermes':false};
+var activeSubgroups = {'non-vasc':true,'vasc-sans-fleurs':true};
+var allCards=[], available=[], reviewQueue=[], known=[], current=null, revealed=false, turn=0;
+
+// ─── CONFIG LOGIC ─────────────────────────────────────────────────────────────
+function toggleTheme(t) {
+  activeThemes[t]=!activeThemes[t];
+  document.querySelector('[data-theme="'+t+'"]').classList.toggle('active',activeThemes[t]);
+  if(t==='classification') updateSubgroupUI();
+  updateCardCount();
+}
+function toggleSubgroup(g) {
+  activeSubgroups[g]=!activeSubgroups[g];
+  document.querySelector('[data-subgroup="'+g+'"]').classList.toggle('active',activeSubgroups[g]);
+  updateCardCount();
+}
+function updateSubgroupUI() {
+  var container = document.getElementById('subgroupContainer');
+  if(activeThemes['classification']) {
+    container.classList.remove('hidden');
+    Object.keys(activeSubgroups).forEach(function(g){
+      document.querySelector('[data-subgroup="'+g+'"]').classList.toggle('active',activeSubgroups[g]);
+    });
+  } else {
+    container.classList.add('hidden');
+  }
+}
+function selectAll() {
+  Object.keys(activeThemes).forEach(function(t){ activeThemes[t]=true; document.querySelector('[data-theme="'+t+'"]').classList.add('active'); });
+  Object.keys(activeSubgroups).forEach(function(g){ activeSubgroups[g]=true; });
+  updateSubgroupUI();
+  updateCardCount();
+}
+function selectNone() {
+  Object.keys(activeThemes).forEach(function(t){ activeThemes[t]=false; document.querySelector('[data-theme="'+t+'"]').classList.remove('active'); });
+  updateSubgroupUI();
+  updateCardCount();
+}
+function cardMatches(c) {
+  if(!activeThemes[c.theme]) return false;
+  if(c.g) return !!activeSubgroups[c.g];
+  return true;
+}
+function updateCardCount() {
+  var n = CARDS.filter(cardMatches).length;
+  document.getElementById('cardCount').textContent = n + ' carte' + (n>1?'s':'');
+  document.getElementById('btnStart').disabled = (n===0);
+}
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(function(s){ s.classList.add('hidden'); });
+  document.getElementById(id).classList.remove('hidden');
+}
+function startGame() {
+  allCards=buildCards(); available=allCards.slice(); reviewQueue=[]; known=[]; turn=0;
+  document.getElementById('gameArea').style.display='block';
+  document.getElementById('doneScreen').style.display='none';
+  showCard();
+  showScreen('screenGame');
+}
+function goConfig() { showScreen('screenConfig'); updateCardCount(); }
+
+// ─── GAME LOGIC ───────────────────────────────────────────────────────────────
+function buildCards() {
+  return shuffle(CARDS.filter(cardMatches));
+}
+function shuffle(a) {
+  for(var i=a.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=a[i]; a[i]=a[j]; a[j]=t; }
+  return a;
+}
+function pickNext() {
+  var due=reviewQueue.filter(function(r){ return r.showAtTurn<=turn; });
+  if(due.length){ var p=due[Math.floor(Math.random()*due.length)]; reviewQueue=reviewQueue.filter(function(r){return r!==p;}); return p.card; }
+  if(available.length){ var idx=Math.floor(Math.random()*available.length); var c=available[idx]; available.splice(idx,1); return c; }
+  if(reviewQueue.length){ reviewQueue.sort(function(a,b){return a.showAtTurn-b.showAtTurn;}); return reviewQueue.shift().card; }
+  return null;
+}
+function setField(id, text) {
+  var el = document.getElementById(id);
+  if (!text) { el.textContent = ''; el.classList && el.classList.remove('multiline'); return; }
+  if (text.indexOf('\n') !== -1) {
+    var lines = text.split('\n').filter(function(l){ return l.trim() !== ''; });
+    el.innerHTML = lines.map(function(line){
+      var trimmed = line.trim();
+      var isIndented = line.match(/^(\s+)/);
+      var isAnnotation = trimmed.match(/^[=\(\[≠]/);
+      var isPlain = trimmed.charAt(0) === '~';
+      var hasPrefix = trimmed.match(/^[↑↓●]/);
+      if (isPlain) {
+        return '<span style="display:block;opacity:0.75;font-size:0.92em">'+trimmed.slice(1)+'</span>';
+      } else if (isAnnotation) {
+        return '<span style="padding-left:0.3em;display:block;opacity:0.75;font-size:0.92em">'+trimmed+'</span>';
+      } else if (isIndented) {
+        var indentMarker = hasPrefix ? '' : '– ';
+        return '<span style="padding-left:1.4em;display:block;opacity:0.8">'+indentMarker+trimmed+'</span>';
+      } else if (hasPrefix) {
+        return '<span style="display:block">'+trimmed+'</span>';
+      } else {
+        return '<span style="display:block">• '+trimmed+'</span>';
+      }
+    }).join('');
+    if (id === 'answerText') el.classList.add('multiline');
+  } else {
+    el.textContent = text;
+    if (id === 'answerText') el.classList.remove('multiline');
+  }
+}
+function showCard() {
+  current=pickNext();
+  if(!current){ document.getElementById('gameArea').style.display='none'; document.getElementById('doneScreen').style.display='block'; return; }
+  revealed=false;
+  var col=THEME_COLORS[current.theme];
+  document.getElementById('cardAccentBar').style.background='linear-gradient(90deg,'+col[0]+','+col[1]+')';
+  var isSans = (current.theme==='botanique-generale'||current.theme==='classification'||current.theme==='angiospermes');
+  var qEl = document.getElementById('qText');
+  if(isSans) qEl.classList.add('sans'); else qEl.classList.remove('sans');
+  qEl.textContent=current.q;
+  document.getElementById('answerArea').classList.remove('visible');
+  setField('answerText','');
+  setField('answerFamily','');
+  setField('answerDetail','');
+  document.getElementById('revealBtn').disabled=false;
+  document.getElementById('revealButtons').classList.remove('hidden');
+  document.getElementById('actionButtons').classList.add('hidden');
+  updateStats(); updateProgress();
+}
+function doReveal() {
+  if(!current||revealed) return;
+  revealed=true; turn++;
+  var isSans = (current.theme==='botanique-generale'||current.theme==='classification'||current.theme==='angiospermes');
+  var el = document.getElementById('answerText');
+  if(isSans) el.classList.add('sans'); else el.classList.remove('sans');
+  setField('answerText', current.a);
+  setField('answerFamily', current.family||'');
+  setField('answerDetail', current.detail||'');
+  document.getElementById('answerArea').classList.add('visible');
+  document.getElementById('revealButtons').classList.add('hidden');
+  document.getElementById('actionButtons').classList.remove('hidden');
+}
+function doKnown()   { if(!current) return; known.push(current); showCard(); }
+function doReview(n) { if(!current) return; reviewQueue.push({card:current,showAtTurn:turn+n}); showCard(); }
+function updateStats() {
+  document.getElementById('stats').innerHTML=
+    '\u2713\u00A0Connues\u00A0:<strong>'+known.length+'</strong> \u00B7 '+
+    '\u21BA\u00A0\u00C0 revoir\u00A0:<strong>'+reviewQueue.length+'</strong> \u00B7 '+
+    'Restantes\u00A0:<strong>'+available.length+'</strong> \u00B7 '+
+    'Tour\u00A0:<strong>'+turn+'</strong>';
+}
+function updateProgress() {
+  var t=allCards.length;
+  document.getElementById('progressFill').style.width=(t>0?(known.length/t*100):0)+'%';
+}
+function doRestart() {
+  allCards=buildCards(); available=allCards.slice(); reviewQueue=[]; known=[]; turn=0;
+  document.getElementById('gameArea').style.display='block';
+  document.getElementById('doneScreen').style.display='none';
+  showCard();
+}
+
+// ─── TAP HANDLERS ─────────────────────────────────────────────────────────────
+function tapHandler(id,fn) {
+  var el=document.getElementById(id); if(!el) return;
+  var touched=false;
+  el.addEventListener('touchstart',function(e){e.preventDefault();e.stopPropagation();touched=true;fn();},{passive:false});
+  el.addEventListener('touchend',  function(e){e.preventDefault();e.stopPropagation();},{passive:false});
+  el.addEventListener('touchmove', function(e){e.preventDefault();},{passive:false});
+  el.addEventListener('click',     function(e){e.preventDefault();e.stopPropagation();if(!touched)fn();touched=false;});
+}
+tapHandler('revealBtn',   doReveal);
+tapHandler('knownBtn',    doKnown);
+tapHandler('reviewBtn3',  function(){ doReview(3);  });
+tapHandler('reviewBtn5',  function(){ doReview(5);  });
+tapHandler('reviewBtn20', function(){ doReview(20); });
+tapHandler('restartBtn',  doRestart);
+document.addEventListener('touchmove',function(e){e.preventDefault();},{passive:false});
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+updateCardCount();
+showScreen('screenConfig');
+</script>
+</body>
+</html>
